@@ -1,0 +1,1505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Course Catalogue</title>
+<script>
+  // Apply saved theme immediately (before CSS paints) to avoid a flash of the wrong theme.
+  try{
+    if(localStorage.getItem('course-catalogue-theme') === 'dark'){
+      document.documentElement.classList.add('dark-mode');
+    }
+  }catch(e){}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pine:#00693E;
+    --pine-dark:#123524;
+    --ink:#1B2B22;
+    --parchment:#F6F2E8;
+    --card:#FFFDF7;
+    --gold:#B9975B;
+    --gold-soft:#EFE3C9;
+    --sage:#DCE6DA;
+    --line:#D8D0BC;
+    --muted:#6B6656;
+    --danger:#9C4A3B;
+  }
+  html.dark-mode{
+    --pine:#4CBF8B;
+    --pine-dark:#BFE6D3;
+    --ink:#E9E4D6;
+    --parchment:#182420;
+    --card:#212F29;
+    --gold:#D8BC80;
+    --gold-soft:#3A3324;
+    --sage:#28372F;
+    --line:#3A473F;
+    --muted:#93A198;
+    --danger:#E0876F;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    transition:background-color .25s ease, color .25s ease;
+    background:var(--parchment);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    padding:28px 20px 60px;
+  }
+  .wrap{max-width:1040px;margin:0 auto;}
+
+  /* header */
+  header{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;
+    border-bottom:3px solid var(--pine);padding-bottom:18px;margin-bottom:28px;flex-wrap:wrap;}
+  .title-block{display:flex;align-items:center;gap:14px;}
+  .leaf{width:40px;height:40px;flex:none;}
+  h1{font-family:'Fraunces',serif;font-weight:700;font-size:34px;margin:0;letter-spacing:-0.5px;color:var(--pine-dark);}
+  .sub{font-size:13px;color:var(--muted);margin-top:2px;letter-spacing:.04em;text-transform:uppercase;}
+  .drawer-label{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--pine-dark);color:var(--gold-soft);
+    padding:6px 12px;border-radius:3px;letter-spacing:.08em;}
+
+  /* drag handle + priority star */
+  .drag-handle-cell{cursor:grab;color:var(--muted);text-align:center;width:22px;font-size:14px;user-select:none;}
+  tr.dragging{opacity:.4;}
+  tr.drag-over{border-top:2px solid var(--pine);}
+  .star-btn{
+    background:none;border:none;font-size:16px;line-height:1;cursor:pointer;color:var(--line);
+    padding:0;width:22px;text-align:center;
+  }
+  .star-btn:hover{color:var(--gold);}
+  .star-btn.active{color:var(--gold);}
+  .row-info-btn{margin-left:6px;vertical-align:middle;}
+  .prereq-add-btn{
+    display:block;margin-top:4px;background:none;border:1px solid var(--danger);color:var(--danger);
+    border-radius:5px;padding:2px 7px;font-family:'Inter',sans-serif;font-size:10.5px;font-weight:600;
+    cursor:pointer;white-space:nowrap;
+  }
+  .prereq-add-btn:hover{background:var(--danger);color:#fff;}
+
+  /* prereq warning in main table */
+  .prereq-flag{
+    display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;
+    border-radius:50%;background:var(--danger);color:#fff;font-size:10px;font-weight:700;
+    cursor:help;margin-left:6px;flex:none;
+  }
+
+  /* requirements dashboard */
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:22px 24px;margin-bottom:26px;
+    box-shadow:0 1px 0 rgba(0,0,0,.03);}
+  .panel h2{font-family:'Fraunces',serif;font-size:19px;margin:0 0 4px;color:var(--pine-dark);}
+  .panel .desc{font-size:13px;color:var(--muted);margin-bottom:16px;}
+  .progress-line{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
+  .progress-track{flex:1;height:8px;border-radius:5px;background:var(--sage);overflow:hidden;}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--pine),var(--gold));transition:width .5s ease;}
+  .progress-count{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--pine-dark);white-space:nowrap;}
+
+  .req-group-title{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:14px 0 8px;}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;}
+  .chip{
+    display:flex;align-items:center;gap:7px;
+    border:1px solid var(--line);border-radius:20px;padding:6px 12px 6px 8px;
+    font-size:13px;background:var(--parchment);transition:all .25s ease;cursor:default;
+  }
+  .chip .dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--muted);flex:none;
+    display:flex;align-items:center;justify-content:center;font-size:11px;color:transparent;transition:all .25s ease;}
+  .chip.done{background:var(--sage);border-color:var(--pine);}
+  .chip.done .dot{background:var(--pine);border-color:var(--pine);color:#fff;}
+  .chip .count{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);}
+  .chip.done .count{color:var(--pine-dark);}
+  .chip.manual{cursor:pointer;user-select:none;}
+  .chip.manual:hover{border-color:var(--pine);}
+  .chip .info-btn{
+    width:16px;height:16px;border-radius:50%;border:1px solid var(--muted);background:transparent;
+    color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:10px;line-height:1;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;padding:0;
+  }
+  .chip .info-btn:hover{background:var(--pine);border-color:var(--pine);color:#fff;}
+  .chip.done .info-btn{border-color:var(--pine-dark);color:var(--pine-dark);}
+
+  /* panel header with action button */
+  .panel-head-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .icon-btn{
+    background:var(--pine);color:#fff;border:none;border-radius:6px;padding:8px 14px;
+    font-family:'Inter',sans-serif;font-weight:600;font-size:13px;cursor:pointer;transition:background .2s ease;
+    white-space:nowrap;flex:none;
+  }
+  .icon-btn:hover{background:var(--pine-dark);}
+
+  /* modal */
+  .modal-overlay{
+    display:none;position:fixed;inset:0;background:rgba(18,53,36,.45);z-index:50;
+    align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal-card{
+    background:var(--card);border-radius:10px;max-width:640px;width:100%;padding:24px 26px;
+    box-shadow:0 10px 40px rgba(0,0,0,.2);position:relative;
+  }
+  .modal-close{
+    position:absolute;top:14px;right:14px;border:none;background:transparent;color:var(--muted);
+    font-size:20px;line-height:1;cursor:pointer;padding:4px;
+  }
+  .modal-close:hover{color:var(--danger);}
+  .modal-card h2{font-family:'Fraunces',serif;font-size:19px;margin:0 0 4px;color:var(--pine-dark);padding-right:24px;}
+  .modal-card .desc{font-size:13px;color:var(--muted);margin-bottom:16px;}
+  .info-body{font-size:13.5px;line-height:1.6;color:var(--ink);}
+
+  /* course database search */
+  .db-search-bar{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:10px;margin-bottom:12px;}
+  .db-results{border:1px solid var(--line);border-radius:8px;max-height:280px;overflow-y:auto;margin-bottom:10px;background:var(--card);}
+  .db-row{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);}
+  .db-row:last-child{border-bottom:none;}
+  .db-row-main{flex:1;min-width:0;}
+  .db-row-code{font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--pine-dark);font-size:13px;}
+  .db-row-name{font-size:13px;}
+  .db-row-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+  .db-row-tags{margin-top:4px;}
+  .db-row-prereq{font-size:11px;margin-top:4px;}
+  .db-row-prereq.prereq-warn{color:var(--danger);}
+  .db-row-prereq.prereq-ok{color:var(--pine-dark);}
+  .db-row-actions{display:flex;gap:6px;flex:none;align-items:center;}
+  .db-add-btn{
+    background:var(--pine);color:#fff;border:none;border-radius:6px;padding:6px 10px;
+    font-family:'Inter',sans-serif;font-weight:600;font-size:12px;cursor:pointer;white-space:nowrap;
+  }
+  .db-add-btn:hover{background:var(--pine-dark);}
+  .db-add-btn.added{background:var(--gold);}
+  .db-info-btn{
+    width:22px;height:22px;border-radius:50%;border:1px solid var(--muted);background:transparent;color:var(--muted);
+    font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;flex:none;
+  }
+  .db-info-btn:hover{background:var(--pine);border-color:var(--pine);color:#fff;}
+  .db-empty{padding:20px;text-align:center;color:var(--muted);font-size:13px;font-style:italic;}
+  .manual-toggle{
+    background:none;border:none;color:var(--pine-dark);font-family:'Inter',sans-serif;font-size:13px;
+    font-weight:600;cursor:pointer;padding:6px 0;text-decoration:underline;margin-bottom:10px;
+  }
+  .manual-form-wrap{display:none;border-top:1px solid var(--line);padding-top:14px;margin-top:4px;}
+  .manual-form-wrap.open{display:block;}
+
+  /* add course form */
+  .form-grid{display:grid;grid-template-columns:1fr 1.4fr;gap:12px;margin-bottom:14px;}
+  .form-grid-dept{margin-bottom:14px;}
+  .form-grid-dept select{max-width:320px;}
+  label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);display:block;margin-bottom:5px;}
+  input[type=text],select,textarea{
+    width:100%;border:1px solid var(--line);border-radius:6px;padding:9px 10px;
+    font-family:'Inter',sans-serif;font-size:14px;background:var(--card);color:var(--ink);
+  }
+  input[type=text]:focus,select:focus,textarea:focus{outline:2px solid var(--pine);outline-offset:1px;}
+  textarea{resize:vertical;min-height:40px;}
+  .tag-select-row{display:flex;flex-wrap:wrap;gap:18px;margin-bottom:14px;}
+  .tag-select{}
+  .tag-btn{
+    display:inline-block;border:1px solid var(--line);border-radius:6px;padding:5px 10px;margin:0 6px 6px 0;
+    font-family:'IBM Plex Mono',monospace;font-size:12px;cursor:pointer;background:var(--card);transition:all .2s ease;
+  }
+  .tag-btn.selected{background:var(--pine);color:#fff;border-color:var(--pine);}
+  .add-row-btn{
+    background:var(--pine);color:#fff;border:none;border-radius:6px;padding:10px 20px;
+    font-family:'Inter',sans-serif;font-weight:600;font-size:14px;cursor:pointer;transition:background .2s ease;
+  }
+  .add-row-btn:hover{background:var(--pine-dark);}
+
+  /* table */
+  table{width:100%;border-collapse:collapse;margin-top:6px;}
+  thead th{
+    text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+    border-bottom:2px solid var(--pine);padding:8px 8px;
+  }
+  tbody td{padding:11px 8px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:top;}
+  tbody tr:hover{background:var(--sage);}
+  .code-cell{font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--pine-dark);white-space:nowrap;}
+  tbody tr{border-left:4px solid transparent;}
+  .dept-pill{display:inline-block;border-radius:5px;padding:3px 9px;font-size:12px;font-weight:600;white-space:nowrap;}
+  .tag-pill{display:inline-block;background:var(--gold-soft);color:var(--pine-dark);border-radius:4px;
+    padding:2px 6px;font-size:10.5px;font-family:'IBM Plex Mono',monospace;margin:0 3px 3px 0;}
+  .wcult-pill{background:var(--sage);}
+  .del-btn{border:none;background:transparent;color:var(--danger);cursor:pointer;font-size:16px;line-height:1;}
+  .del-btn:hover{text-decoration:underline;}
+  .empty{padding:30px;text-align:center;color:var(--muted);font-size:14px;font-style:italic;}
+
+  /* term islands */
+  .term-island{
+    border:1px solid var(--line);border-radius:9px;background:var(--parchment);
+    padding:14px 16px 6px;margin-bottom:16px;
+  }
+  .term-island-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;gap:10px;}
+  .term-island-title{font-family:'Fraunces',serif;font-weight:600;font-size:15px;color:var(--pine-dark);}
+  .term-island-count{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap;}
+  .term-island table{margin-top:0;}
+  .term-rest-label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:4px 0 6px;}
+  .term-select{padding:6px 7px;font-size:12.5px;min-width:88px;}
+
+  /* dark mode */
+  html.dark-mode .leaf path, html.dark-mode .leaf rect{fill:var(--pine);}
+  .theme-toggle-btn{
+    background:var(--card);border:1px solid var(--line);color:var(--pine-dark);border-radius:6px;
+    padding:6px 10px;font-family:'Inter',sans-serif;font-size:11.5px;font-weight:600;cursor:pointer;
+    white-space:nowrap;transition:all .2s ease;
+  }
+  .theme-toggle-btn:hover{border-color:var(--pine);background:var(--sage);}
+
+  /* per-course notes */
+  .notes-btn{
+    background:none;border:1px solid var(--line);color:var(--muted);border-radius:6px;
+    padding:5px 9px;font-family:'Inter',sans-serif;font-size:12px;cursor:pointer;white-space:nowrap;
+    transition:all .2s ease;
+  }
+  .notes-btn:hover{border-color:var(--pine);color:var(--pine-dark);background:var(--sage);}
+  .notes-btn.has-note{border-color:var(--gold);color:var(--pine-dark);background:var(--gold-soft);}
+  .notes-textarea{
+    width:100%;min-height:160px;border:1px solid var(--line);border-radius:6px;padding:10px 12px;
+    font-family:'Inter',sans-serif;font-size:14px;background:var(--card);color:var(--ink);resize:vertical;
+    margin-bottom:14px;
+  }
+  .notes-modal-actions{display:flex;justify-content:flex-end;gap:10px;}
+  .notes-cancel-btn{
+    background:none;border:1px solid var(--line);color:var(--muted);border-radius:6px;padding:9px 16px;
+    font-family:'Inter',sans-serif;font-weight:600;font-size:13.5px;cursor:pointer;
+  }
+  .notes-cancel-btn:hover{border-color:var(--danger);color:var(--danger);}
+
+  @media (max-width:720px){
+    .form-grid{grid-template-columns:1fr 1fr;}
+    table, thead, tbody, tr, td, th{display:block;}
+    thead{display:none;}
+    tbody tr{border:1px solid var(--line);border-radius:8px;margin-bottom:10px;padding:8px;}
+    tbody td{border-bottom:none;padding:4px 4px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="title-block">
+      <svg class="leaf" viewBox="0 0 100 100"><path fill="#00693E" d="M50 5 C 30 25, 20 45, 20 60 L 35 60 L 15 85 L 40 85 L 25 100 L 75 100 L 60 85 L 85 85 L 65 60 L 80 60 C 80 45, 70 25, 50 5 Z"/><rect x="46" y="30" width="8" height="40" fill="#00693E"/></svg>
+      <div>
+        <h1>Course Catalogue</h1>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="drawer-label" id="drawer-count">0 courses filed</div>
+      <button class="theme-toggle-btn" id="theme-toggle-btn" title="Switch between light and dark mode">🌙 Dark</button>
+    </div>
+  </header>
+
+  <div class="panel" style="padding:0;overflow-x:auto;">
+    <div style="padding:22px 24px 4px;">
+      <div class="panel-head-row">
+        <h2>Courses</h2>
+        <button class="icon-btn" id="open-add-course">+ Add Course</button>
+      </div>
+      <div class="desc" style="margin-top:10px;">Drag rows (⠿) to reorder within a term, or drop one into a different term's group to move it there. Star a course to pin it to the top of its group.</div>
+    </div>
+    <div id="course-groups" style="padding:0 24px 22px;"></div>
+    <div class="empty" id="empty-state">No courses filed yet — add your first one below.</div>
+  </div>
+
+  <div class="panel">
+    <h2>Requirements Tracker</h2>
+
+    <div class="progress-line">
+      <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+      <div class="progress-count" id="progress-count">0 / 14 complete</div>
+    </div>
+
+    <div class="req-group-title">Distributive Requirements</div>
+    <div class="chips" id="dist-chips"></div>
+
+    <div class="req-group-title">World Culture Requirements</div>
+    <div class="chips" id="wcult-chips"></div>
+
+    <div class="req-group-title">Other First-Year Requirements (tap to mark done)</div>
+    <div class="chips" id="manual-chips"></div>
+  </div>
+
+</div>
+
+<div class="modal-overlay" id="add-course-overlay">
+  <div class="modal-card">
+    <button class="modal-close" id="close-add-course" title="Close">✕</button>
+    <h2>Add a Course</h2>
+    <div class="desc">Search the Explore, Engage, Excel course guide by keyword, department, or requirement — or add your own below.</div>
+
+    <div class="db-search-bar">
+      <input type="text" id="db-search" placeholder="Search keyword, code, or name...">
+      <select id="db-dept-filter"><option value="">All departments</option></select>
+      <select id="db-req-filter"><option value="">All requirements</option></select>
+    </div>
+    <div class="db-results" id="db-results"></div>
+
+    <button class="manual-toggle" id="manual-toggle">+ Add a course not listed here</button>
+
+    <div class="manual-form-wrap" id="manual-form-wrap">
+      <div class="form-grid">
+        <div>
+          <label for="f-code">Course Code</label>
+          <input type="text" id="f-code" placeholder="e.g. GOVT 3">
+        </div>
+        <div>
+          <label for="f-name">Course Name</label>
+          <input type="text" id="f-name" placeholder="e.g. The American Political System">
+        </div>
+      </div>
+      <div class="form-grid-dept">
+        <label for="f-dept">Department</label>
+        <select id="f-dept">
+          <option value="">— Select department —</option>
+        </select>
+      </div>
+
+      <div class="tag-select-row">
+        <div class="tag-select">
+          <label>Distributive (click all that apply)</label>
+          <div id="dist-tags"></div>
+        </div>
+        <div class="tag-select">
+          <label>World Culture (click all that apply)</label>
+          <div id="wcult-tags"></div>
+        </div>
+      </div>
+
+      <button class="add-row-btn" id="add-btn">+ Add to Catalogue</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="info-overlay">
+  <div class="modal-card">
+    <button class="modal-close" id="close-info" title="Close">✕</button>
+    <h2 id="info-title"></h2>
+    <div class="info-body" id="info-body"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="notes-overlay">
+  <div class="modal-card">
+    <button class="modal-close" id="close-notes" title="Close">✕</button>
+    <h2 id="notes-title"></h2>
+    <div class="desc">Jot down anything worth remembering about this course — professor tips, time conflicts, why you added it.</div>
+    <textarea class="notes-textarea" id="notes-textarea" placeholder="Type your note here..."></textarea>
+    <div class="notes-modal-actions">
+      <button class="notes-cancel-btn" id="notes-cancel-btn">Cancel</button>
+      <button class="add-row-btn" id="notes-save-btn">Save Note</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DIST = [
+  {key:'ART', label:'Arts', needed:1},
+  {key:'LIT', label:'Literature', needed:1},
+  {key:'TMV', label:'Thought, Meaning & Value', needed:1},
+  {key:'INT', label:'Int\'l / Comparative', needed:1},
+  {key:'SOC', label:'Social Analysis', needed:2},
+  {key:'QDS', label:'Quant. & Deductive Sci.', needed:1},
+  {key:'SCI', label:'Natural Science', needed:2},
+  {key:'TAS', label:'Tech / Applied Sci.', needed:1},
+];
+const WCULT = [
+  {key:'W', label:'Western Culture', needed:1},
+  {key:'NW', label:'Non-Western Culture', needed:1},
+  {key:'CI', label:'Culture & Identity', needed:1},
+];
+const MANUAL = [
+  {key:'writing', label:'First-Year Writing'},
+  {key:'seminar', label:'First-Year Seminar'},
+  {key:'language', label:'Language Requirement'},
+];
+
+// Descriptions pulled from the Explore, Engage, Excel guide
+const DIST_INFO = {
+  title: 'Distributive Requirement',
+  body: `Dartmouth's requirement of Distributive courses allows you to broadly explore several fields and gain new perspectives. Both the Distributive Requirement and the World Culture Requirement allow for discovery and encourage exposure to new interests.
+  <br><br>Each student must take courses in each of the following areas: one in Arts (ART), one in Literature (LIT), one in Systems and Traditions of Thought, Meaning, and Value (TMV), one in International or Comparative Study (INT), two in Social Analysis (SOC), one in Quantitative and Deductive Sciences (QDS), two in the Natural Sciences without/with laboratory (SCI/SLA), and one in Technology or Applied Science without/with laboratory (TAS/TLA).
+  <br><br>One of the courses taken in either SCI/SLA or TAS/TLA must have a laboratory, experimental, or field component. Introductory language, first-year writing, first-year seminars, and independent study courses do not fulfill Distributive or World Culture Requirements.`
+};
+const WCULT_INFO = {
+  title: 'World Culture Requirement',
+  body: `As with Distributives, the World Culture Requirement supports the belief that a liberally educated person has been exposed to a wide range of fields and insights. Each student must take at least one course in each of the following cultural areas: Western Culture (W), Non-Western Culture (NW), and Culture and Identity (CI).
+  <br><br>A single course may fulfill both a Distributive and World Culture requirement — for example, a course in 19th-century British fiction might satisfy both the literature requirement under the Distributive category and the western culture requirement under World Culture. It is thus possible, by careful selection of courses, to complete both the Distributive and World Culture Requirements with ten courses.
+  <br><br>Distributive and World Culture Requirements cannot be fulfilled with pre-matriculation credit, and must be passed with a regular letter grade.`
+};
+const MANUAL_INFO = {
+  writing: {
+    title: 'First-Year Writing',
+    body: `All first-year students are required to fulfill Dartmouth's First Year Writing Sequence, made up of two graduation requirements taken in the first year. The first element is the First-Year Writing requirement, satisfied by taking WRIT 5 or its approved equivalents (Writing 2-3 or Humanities 1).
+    <br><br>WRIT 5 introduces students to critical writing, treating writing not primarily as an instrument for communication but as a practice of thinking. WRIT 2-3 is a two-term course offering more intensive guidance through the reading, writing, and research processes, including individual tutor support and a culminating research project; it's offered in fall and winter terms only, and is taken in place of WRIT 5.`
+  },
+  seminar: {
+    title: 'First-Year Seminar',
+    body: `The second element of the First-Year Writing Sequence is the First-Year Seminar requirement, satisfied by taking a First-Year Seminar or Humanities 2. First-Year Seminars offer every first-year student the opportunity to participate in a course structured around intensive writing, independent research, small group discussion, and reading within a specific disciplinary or interdisciplinary focus.
+    <br><br>Scheduling guidelines: successful completion of the First-Year Writing requirement is a prerequisite for enrollment in a First-Year Seminar (or Humanities 2); the Seminar (or Humanities 2) must be taken the term immediately following completion of the writing requirement; and a student is not eligible to take part in an off-campus program until it is completed.`
+  },
+  language: {
+    title: 'Language Requirement',
+    body: `All students must satisfy the Language Requirement with coursework taken at Dartmouth. There are a few paths: the Big Green path (completing language courses numbered 1, 2, and 3, or a Language Study Abroad program); the BEMA path, for students who've already demonstrated one year of competency and take a more advanced course or an LRP (Language Requirement for Proficient Speakers) course; the Lone Pine path, for students with competency in a language not taught at Dartmouth; or a Waiver, granted by the Language Substitution Committee.
+    <br><br>Consider the different ways to complete it: continue a language started in high school, start something new, or study abroad.`
+  }
+};
+
+// Course database extracted from the Explore, Engage, Excel guide.
+// desc: null means the guide lists it as recommended but doesn't include a full description.
+const COURSES = [
+  // African and African American Studies
+  {code:'AAAS 09', name:'Introduction to AAAS Diaspora Studies', dept:'African and African American Studies', dist:['INT'], wcult:['CI'], desc:"A comparative and historical team-taught course composed of three units: Africa, the Caribbean, and the United States. In addition to literary and social sciences texts, the course considers music, the visual arts, science, diaspora theory, and research strategies. Topics include the coloniality of modernity; religio-racial self-fashioning; Diaspora identity and identification; African diaspora gender and sexuality; cuisine; pathogenicity, disease and chemical catastrophes."},
+  {code:'AAAS 10', name:'Introduction to African American Studies', dept:'African and African American Studies', dist:['SOC'], wcult:['CI'], desc:"A multidisciplinary investigation into the lives and cultures of people of African descent in the Americas. Topics include: the African background, religion and the black church, popular culture, slavery and resistance, morality and literacy, the civil rights movement, black nationalism, theories of race and race relations."},
+  {code:'AAAS 11', name:'Introduction to African Studies', dept:'African and African American Studies', dist:['SOC'], wcult:['NW'], desc:null},
+  {code:'AAAS 12', name:'Race and Slavery in US History', dept:'African and African American Studies', dist:['SOC'], wcult:['W'], desc:"Deals with the African heritage, origins of white racial attitudes toward blacks, the slave system in colonial and antebellum America, and free Black society in North America. Specific emphasis on the Afro-American experience and the relationship between blacks and whites in early American society."},
+  {code:'AAAS 14', name:'Pre-Colonial African History', dept:'African and African American Studies', dist:['SOC'], wcult:['NW'], desc:null},
+  {code:'AAAS 15', name:'History of Africa since 1800', dept:'African and African American Studies', dist:['SOC'], wcult:['NW'], desc:null},
+  {code:'AAAS 18.03', name:'Introduction to African Religions', dept:'African and African American Studies', dist:['TMV'], wcult:['NW'], desc:null},
+  {code:'AAAS 19', name:'Africa and the World', dept:'African and African American Studies', dist:['INT','SOC'], wcult:['NW'], desc:"Focus on links between Africa and other parts of the world, in particular Europe and Asia. Readings, lectures, and discussions address travel and migration, economics and trade, identity formation, empire, and cultural production — demonstrating both the diversity of experiences and long-term global connections among disparate parts of the world."},
+  {code:'AAAS 22', name:'Religion and the Civil Rights Movement', dept:'African and African American Studies', dist:['TMV'], wcult:['CI'], desc:null},
+  {code:'AAAS 22.10', name:'African American Religion and Culture in Jim Crow America', dept:'African and African American Studies', dist:['TMV'], wcult:['CI'], desc:"Jim Crow segregation in the US compelled many African American men and women to use their bodies — their hands, feet, and voices — to create sacred scenes, sounds, and spaces to articulate their existence in America. This seminar focuses on religious production to explore African American culture in the post-Civil War era, analyzing music, visual art, film, religious architecture, sermons, food, theater, photography, and news media."},
+  {code:'AAAS 27', name:'Transformative Spiritual Journeys', dept:'African and African American Studies', dist:['TMV'], wcult:['CI'], desc:"Presents African Americans who have created religious and spiritual lives amid the variety of possibilities for religious belonging in the second half of the twentieth century and the early twenty-first. Studies the writings of theologians, religious laity, spiritual gurus, hip hop philosophers, LGBT clergy, religious minorities, and scholars of religion, exploring themes of spiritual formation and religious belonging as a process — healing, self-making, writing, growing up, renouncing, dreaming, and liberating."},
+  {code:'AAAS 63', name:'Race Matters: "Race" Made to Matter', dept:'African and African American Studies', dist:['SOC'], wcult:['CI'], desc:null},
+
+  // Anthropology
+  {code:'ANTH 01', name:'Introduction to Anthropology', dept:'Anthropology', dist:['INT','SOC'], wcult:['CI'], desc:"Explores the unity and diversity of humankind by examining our evolution as a single biological species that nonetheless depends for its survival on learned — and therefore varied and variable — patterns of cultural adaptation. Addresses the relationship between the material conditions of our existence, our unique human capacity for creative thought and action, and changes in the size and scale of human societies."},
+  {code:'ANTH 03', name:'Introduction to Cultural Anthropology', dept:'Anthropology', dist:['INT','SOC'], wcult:['NW'], desc:"Cultural anthropology is the study of human ways of life in the broadest possible comparative perspective, interested in all types of societies from hunting and gathering bands to modern industrial states. The course documents the full range of human cultural adaptations and achievements and discerns the underlying covariations among and changes in human ecology, institutions, and ideologies."},
+  {code:'ANTH 05', name:'Reconstructing the Past: Introduction to Archaeology', dept:'Anthropology', dist:['SOC'], wcult:[], desc:"Anthropological archaeology makes a unique contribution to understanding the human past. Introduces the key concepts, methods, and techniques used by modern archaeologists to interpret the past, through small projects and case-study discussion."},
+  {code:'ANTH 06', name:'Introduction to Biological Anthropology', dept:'Anthropology', dist:['SCI'], wcult:[], desc:"Introduces the major themes of biological anthropology, including the evolution of the primates, the evolution of the human species, and the diversification and adaptation of modern human populations, with emphasis on the underlying evolutionary framework and the interaction between human biological and cultural existence and the environment."},
+  {code:'ANTH 09', name:'Language and Culture', dept:'Anthropology', dist:['SOC'], wcult:[], desc:"Introduces students to the study of human language as a species-specific endowment of humankind, examining the relationship between language use and cultural values, language diversity and social stratification, individual identity and intention in face-to-face interaction, the cultural patterning of speech behavior, and whether language structure affects culture, cognition, and thought."},
+  {code:'ANTH 11', name:'Ancient Native Americans', dept:'Anthropology', dist:['SOC'], wcult:['NW'], desc:"An introduction to the ancient societies of North America, examining the populating of the Americas and related controversies, then concentrating on the subsequent development of diverse pre-Columbian societies — hunter-gatherer bands, Northwest Coast chiefdoms, Southwest farmers such as Chaco Canyon and the desert Hohokam, and the mound-builders of the Eastern Woodlands. Cross-listed as NAIS 11."},
+  {code:'ANTH 13', name:'Who Owns the Past?', dept:'Anthropology', dist:['SOC'], wcult:['CI'], desc:"Modern archaeology grew out of antiquarianism, imperialism, and the attempts of early collectors and scholars to look to the past for aesthetics, identity, and curiosity. Examines how these legacies influence contemporary archaeology, museum practices, and cultural heritage policy from the perspectives of archaeologists, collectors, museums, developers, descendant communities, governments, and the tourism industry."},
+
+  // Art History
+  {code:'ARTH 1', name:'Bodies and Buildings: Intro to the History of Art in the Ancient World and Middle Ages', dept:'Art History', dist:['ART'], wcult:['W'], desc:"Studies basic problems and new directions in the understanding of architecture, sculpture, and painting in Europe and the Near East from the earliest times through the Middle Ages, introducing the language of art criticism and method along with the relationships of the arts to each other and their historical contexts. Note: no pre-matriculation credit or AP exemption is given for Art History courses -- everyone starts at the same level."},
+  {code:'ARTH 2', name:'Introduction to the History of Art: Renaissance to Modern', dept:'Art History', dist:['ART'], wcult:['W'], desc:"A survey of art and architecture from 1500 to the present, introducing the basic terminology of the arts, the language of stylistic criticism, and the relationship of the arts to their historical background. Priority for enrollment given to first- and second-year students."},
+  {code:'ARTH 4', name:'Introduction to World Architecture', dept:'Art History', dist:['ART'], wcult:['W'], desc:"A comparative study of several architectural styles past and present, Western and non-Western, considering a variety of building types from the monumental to the residential."},
+  {code:'ARTH 5', name:'Introduction to Contemporary Art', dept:'Art History', dist:['ART'], wcult:['W'], desc:"Introduces contemporary art practices from the late 1960s to the present, organized thematically around concepts such as the body, identity, postmodernism, institutional critique, site-specificity, memory, ecology, and ethics."},
+
+  // Asian Societies, Cultures, and Languages
+  {code:'CHIN 1-2-3', name:'First Year Courses in Chinese Language', dept:'Asian Societies, Cultures, and Languages', dist:[], wcult:[], desc:"An introduction to spoken and written Modern Standard Chinese, with conversational drill, comprehension exercises, and intensive reading. Traditional characters are learned in Chinese 1 and 2; simplified characters are introduced in Chinese 3. Mandatory student-run drill sessions meet three times a week."},
+  {code:'KOR 1-2-3', name:'First Year Courses in Korean Language', dept:'Asian Societies, Cultures, and Languages', dist:[], wcult:[], desc:"An introductory course to Korean language and culture for students with little or no previous knowledge of Korean, covering Hangeul, self-introduction, greetings, daily and weekly activities, and cultural topics across all four language skills. Mandatory student-run drill sessions meet three times a week for fifty minutes."},
+  {code:'JAPN 1-2-3', name:'First Year Courses in Japanese Language', dept:'Asian Societies, Cultures, and Languages', dist:[], wcult:[], desc:"An introduction to written and spoken modern Japanese, with emphasis on active functional communication, reading comprehension, and listening comprehension, conducted increasingly in Japanese."},
+  {code:'ASCL 01.02', name:'Asian Femininities', dept:'Asian Societies, Cultures, and Languages', dist:['INT','SOC'], wcult:['NW'], desc:"Explores varied forms of Asian femininities through historical documents, religious texts, literary work, images and films, and scholarly sources, toggling between being impartial observers and imagining living in societies different from our own."},
+  {code:'ASCL 10.01', name:'Introduction to Chinese Culture', dept:'Asian Societies, Cultures, and Languages', dist:['LIT'], wcult:['CI'], desc:"Provides a basic knowledge and appreciation of Chinese culture, examining its evolution from the earliest Chinese dynasties over 3500 years ago to the present through readings of literary texts covering language, history, literature, art, philosophy, and social and political institutions."},
+  {code:'ASCL 10.02', name:'Introduction to Korean Culture', dept:'Asian Societies, Cultures, and Languages', dist:['SOC'], wcult:['CI'], desc:"Examines Korea's visual and textual expressions from the pre-modern age to the twentieth century, exploring the origins and modification of Korean national and cultural identities and how Korea has entered America's consciousness, while avoiding generalized or uncritical portrayals."},
+  {code:'ASCL 10.03', name:'Introduction to Japanese Culture', dept:'Asian Societies, Cultures, and Languages', dist:['LIT'], wcult:['CI'], desc:"A broad survey of Japanese cultural history through literature, art, social and political institutions, and popular culture, tracing how cultural archetypes are distinguished in Japan amid swings between foreign cultural appropriation and periods of isolation."},
+  {code:'ASCL 10.04', name:'Introduction to Southeast Asia: Culture & Politics', dept:'Asian Societies, Cultures, and Languages', dist:['INT','SOC'], wcult:['NW'], desc:"An introduction to the cultural and political diversity of Southeast Asia's post-WWII nation-states, exploring the region's cultures within and outside the confines of the modern nation-state and challenging cultural essentialisms and colonial stereotypes."},
+
+  // Astronomy
+  {code:'ASTR 1', name:'Exploration of the Solar System', dept:'Physics and Astronomy', dist:['SCI'], wcult:[], desc:null},
+  {code:'ASTR 2', name:'Exploring the Universe', dept:'Physics and Astronomy', dist:['SCI'], wcult:[], desc:"A survey of contemporary knowledge of the nature and evolution of stars, our Galaxy, other galaxies, dark matter, the expanding universe, and the big bang, discussing the physical processes underlying these phenomena."},
+  {code:'ASTR 3', name:'Exploring the Universe, with Laboratory', dept:'Physics and Astronomy', dist:['SLA'], wcult:[], desc:"Same content as Exploring the Universe, with students making observations using radio and optical telescopes. Supplemental course fee required."},
+  {code:'ASTR 15', name:'Stars and the Milky Way', dept:'Physics and Astronomy', dist:['SCI'], wcult:[], prereq:['MATH 3'], desc:"A more technical introduction to astronomy and astrophysics than Astronomy 1/2/3. Requires Math 3 and an introductory physics course (or permission of the professor if such a course was taken in high school)."},
+
+  // Biological Sciences
+  {code:'BIOL 9', name:'Researching Cellular Mysteries', dept:'Biological Sciences', dist:['SCI'], wcult:[], desc:"Introduces students to modern research in biology, focusing on understanding and applying the scientific method through discovery-based, hands-on laboratory experiences. Students design and carry out experiments to address a novel question in biology — creating new knowledge, since not even the instructors know the outcome in advance. Offered in the fall and winter of the 2026-2027 academic year; may count toward the Biology major or minor if taken during the first year or as your first Biology major course."},
+  {code:'BIOL 11', name:'The Science of Life', dept:'Biological Sciences', dist:['SCI'], wcult:[], desc:"Introduces students to a major problem in biology and considers it from many different perspectives and biological levels of organization, exposing students to major concepts from molecules to ecosystems. Each offering addresses a different major problem. Topics for the three offerings during the 2026-2027 academic year are: Fall — Biology of the Brain; Winter — Emerging Infectious Diseases; Spring — Human Biology. Offered in the fall and winter of the 2026-2027 academic year; may count toward the Biology major or minor if taken during the first year or as your first Biology major course."},
+  {code:'BIOL 12', name:'Cell Structure and Function', dept:'Biological Sciences', dist:['SLA'], wcult:[], terms:['Fall','Spring'], desc:"Provides a foundation in the fundamental mechanisms governing the structure and function of eukaryotic cells: membrane transport, energy conversion, signal transduction, protein targeting, cell motility and the cytoskeleton, and the cell cycle, with a hands-on lab in microscopy, cell fractionation, and protein purification. Offered in fall and spring terms. One of the five Foundation courses for the Biology major (3 of 5 required) and minor (2 of 5 required)."},
+  {code:'BIOL 13', name:'Gene Expression and Inheritance', dept:'Biological Sciences', dist:['SLA'], wcult:[], terms:['Winter'], desc:"Provides a foundation in genetics and molecular biology: the flow of genetic information from DNA to RNA to protein, transmission of genetic information across generations, and the molecular mechanisms controlling gene expression in bacteria and eukaryotes, integrated with contemporary problems in molecular genetics. Offered in summer and winter terms. One of the five Foundation courses for the Biology major (3 of 5 required) and minor (2 of 5 required)."},
+  {code:'BIOL 14', name:'Physiology', dept:'Biological Sciences', dist:['SLA'], wcult:[], terms:['Winter'], desc:"One of the five Foundation courses for the Biology major and minor, covering physiology. Offered in summer and winter terms. (3 of 5 Foundation courses required for the major; 2 of 5 for the minor.)"},
+  {code:'BIOL 15', name:'Genetic Variation and Evolution', dept:'Biological Sciences', dist:['SLA'], wcult:[], terms:['Winter'], desc:"One of the five Foundation courses for the Biology major and minor, covering genetic variation and evolution. Offered in winter term only. (3 of 5 Foundation courses required for the major; 2 of 5 for the minor.) Recommended in your first or second year if you're interested in the Biology FSP."},
+  {code:'BIOL 16', name:'Ecology', dept:'Biological Sciences', dist:['SLA'], wcult:[], terms:['Fall','Spring'], desc:"Examines fundamental concepts in ecology, including the factors that limit distributions and abundances of organisms, effects organisms have on ecosystems, integration of ecosystems globally, and conservation of species diversity, with labs emphasizing field studies. Offered in fall and spring terms. One of the five Foundation courses for the Biology major (3 of 5 required) and minor (2 of 5 required). Recommended in fall or spring of your first year if you're interested in the Biology FSP."},
+  {code:'BIOL — Major/Minor Overview', name:'Biology Major & Minor Requirements (reference)', dept:'Biological Sciences', dist:[], wcult:[], prereq:[], desc:"Not an actual course — a reference card summarizing the Biology requirements. Entry point: BIOL 9 or BIOL 11 (no lab), or place directly into a Foundation course via the online self-assessment exam on Canvas. Foundation courses: BIOL 12 (Cell Structure & Function), 13 (Gene Expression & Inheritance), 14 (Physiology), 15 (Genetic Variation & Evolution), 16 (Ecology) — a MAJOR requires 3 of these 5; a MINOR requires 2 of these 5. To complete the major, students also take 7 additional Area of Concentration courses (in consultation with a faculty advisor), including at least 2 advanced courses numbered 50 or above; a minor requires 4 additional courses. Additional major/minor prerequisites: Chemistry 5 (via Chem 5-6 or Chem 11), plus one quantitative course from COSC 1, ENGS 20, EARS 17, BIOL 10, MATH 4, or MATH 8 and above (MATH 10 also satisfies this). Many graduate/professional schools also expect CHEM 51-52 (Organic Chemistry)."},
+
+  // Chemistry
+  {code:'CHEM 5-6', name:'General Chemistry', dept:'Chemistry', dist:['SLA'], wcult:[], prereq:['MATH 3'], desc:"One of two parallel introductory sequences prerequisite to more advanced chemistry courses. Chemistry 5-6 is for students without credit-on-entrance for Chemistry 5, offered fall (5), winter (5,6), and spring (6). Mathematics 3 is a prerequisite."},
+  {code:'CHEM 11', name:'General Chemistry', dept:'Chemistry', dist:['SLA'], wcult:[], desc:"A one-term course completing a college-level general chemistry curriculum, for students with credit-on-entrance for Chemistry 5 or who place in via the placement test. Offered fall and spring terms. Upon completion, students are given pre-matriculation credit for Chemistry 5 if they don't already have it."},
+  {code:'CHEM 51', name:'Organic Chemistry I', dept:'Chemistry', dist:[], wcult:[], prereq:['CHEM 11'], desc:"The first term of the two-term organic chemistry sequence (with Chemistry 52). Many graduate and professional schools require Chemistry 51-52 for admission, so it's highly recommended for pre-health students. First-year students who complete Chemistry 11 in the fall may go on to complete Chemistry 51-52 during their winter and spring terms."},
+  {code:'CHEM 52', name:'Organic Chemistry II', dept:'Chemistry', dist:[], wcult:[], prereq:['CHEM 51'], desc:"The second term of the two-term organic chemistry sequence, following Chemistry 51. Many graduate and professional schools require Chemistry 51-52 for admission."},
+
+  // Classics
+  {code:'CLST 2', name:'Tragedy and Comedy of Greece and Rome', dept:'Classics', dist:['ART'], wcult:['W'], desc:"Studies in translation selected works of tragedy (Aeschylus, Sophocles, Euripides, Seneca) and comedy (Aristophanes and Plautus), approached both as texts and as scripts/librettos, considering their relationship to other performance types and genres, with practical workshop opportunities."},
+  {code:'CLST 3', name:'Reason and the Good Life: Socrates to Epictetus', dept:'Classics', dist:['TMV'], wcult:['W'], desc:"An introduction to philosophical thought in antiquity, especially Socrates, Epicurus, and the Stoics, concentrating on ethical questions about the best kind of life, and how reason, pleasure, and emotion were weighed at Athens and Rome."},
+  {code:'CLST 6', name:'Introduction to Classical Archaeology', dept:'Classics', dist:['INT','ART'], wcult:['W'], desc:"Introduces basic methods and principles of Classical archaeology through a survey of characteristic sites and artifacts, along with an introduction to Greek and Roman civilization from prehistory to the collapse of the Roman Empire."},
+  {code:'CLST 10.15', name:'Magic and the Occult', dept:'Classics', dist:['TMV'], wcult:['W'], desc:null},
+  {code:'CLST 11.19', name:'Coins as Text', dept:'Classics', dist:['SOC'], wcult:['W'], desc:"A hands-on course focused on ancient coinage, the development and use of money in the ancient Mediterranean, the logistics of coin production, and methods for studying coinage to write Roman history, using coins from Dartmouth's Hood Museum collection."},
+  {code:'CLST 12', name:'Environmental Archaeology (new course)', dept:'Classics', dist:['SOC'], wcult:['W'], desc:null},
+  {code:'CLST 15', name:'Alexander and the Macedonian Kings', dept:'Classics', dist:['INT','SOC'], wcult:['W'], desc:"Establishes a basic understanding of the history of Alexander the Great and Greek-speaking peoples in the eastern Mediterranean during the fourth through first centuries BCE, exploring the cultural, military, political, and economic innovations of that age of experimentation."},
+  {code:'CLST 17', name:'Roman History: The Republic', dept:'Classics', dist:['SOC'], wcult:['W'], desc:"Surveys the history of the Roman people from the founding of Rome (c. 753 BCE) to the assassination of Julius Caesar (44 BCE), studying the development of the Republican political system, Roman law and citizenship, warfare, slavery, and the evolution of the imperial state, including a historical role-play of the 63 BCE political crisis."},
+  {code:'CLST 24', name:'Roman Archaeology: The Birth of Rome', dept:'Classics', dist:['ART'], wcult:['W'], desc:null},
+  {code:'GRK 1', name:'Introductory Ancient Greek I', dept:'Classics', dist:[], wcult:[], terms:['Fall'], desc:"Study of Greek grammar, syntax, and vocabulary accompanied by reading of simple Greek prose selections, followed by GRK 2 and GRK 3. Offered in Fall."},
+  {code:'GRK 2', name:'Introductory Ancient Greek II', dept:'Classics', dist:[], wcult:[], desc:null},
+  {code:'GRK 3', name:'Introductory Ancient Greek III', dept:'Classics', dist:[], wcult:[], desc:null},
+  {code:'GRK 1.02-3.02', name:'Intensive Ancient Greek', dept:'Classics', dist:[], wcult:[], terms:['Spring'], desc:"A double course covering both GRK 1 and GRK 3 in a single term, introducing all the basics of grammar and syntax with a gradual introduction to reading continuous texts. Satisfies the College language requirement. Offered in Spring."},
+  {code:'GRK 10', name:'Readings in Greek Prose and Poetry', dept:'Classics', dist:[], wcult:[], prereq:['GRK 3'], desc:null},
+  {code:'GRK 20', name:"Homer's Iliad", dept:'Classics', dist:['LIT'], wcult:['W'], prereq:['GRK 10'], desc:"An advanced Greek reading course focused on Homer's Iliad. (Prerequisite inferred from the course sequence, not explicitly stated in the guide — confirm with the department.)"},
+  {code:'GRK 26', name:'Herodotus', dept:'Classics', dist:['LIT'], wcult:['W'], prereq:['GRK 10'], desc:"An advanced Greek reading course focused on Herodotus. (Prerequisite inferred from the course sequence, not explicitly stated in the guide — confirm with the department.)"},
+  {code:'LAT 1', name:'Introductory Latin I', dept:'Classics', dist:[], wcult:[], terms:['Fall','Winter'], desc:"A rapid introduction to the Latin language through reading passages of gradually increasing difficulty, with supporting materials on Pompeii and Roman Egypt. Offered in Fall or Winter."},
+  {code:'LAT 2', name:'Introductory Latin II', dept:'Classics', dist:[], wcult:[], terms:['Winter','Spring'], desc:null},
+  {code:'LAT 3', name:'Introductory Latin III', dept:'Classics', dist:[], wcult:[], terms:['Spring','Fall'], desc:null},
+  {code:'LAT 10', name:'Topics in Latin Texts', dept:'Classics', dist:[], wcult:[], prereq:['LAT 3'], desc:null},
+  {code:'LAT 20', name:'Epic Poetry: Lucan, Beyond Civil War', dept:'Classics', dist:['LIT'], wcult:['W'], prereq:['LAT 10'], desc:"Follows the epic poet Lucan to the extremes of graphic violence in Latin literature; his De Bello Civili pits Roman against Roman, man against snake, and corpse against witch. Readings in the original Latin with secondary scholarship in English. (Prerequisite inferred from course sequence, not explicitly stated in the guide — confirm with the department.)"},
+  {code:'LAT 31', name:'Italian Countryside', dept:'Classics', dist:['INT'], wcult:['W'], desc:null},
+
+  // Cognitive Science
+  {code:'COGS 1', name:'Introduction to Cognitive Science', dept:'Cognitive Science', dist:['SOC'], wcult:[], desc:"Aims to understand how the mind works using tools from experimental psychology, computer science, linguistics, vision science, philosophy, anthropology, behavioral economics, and neuroscience, touring mental processes like perception, reasoning, memory, attention, language, intelligence, decision-making, and morality."},
+  {code:'COGS 45', name:'Computational Cognitive Science: Foundations and Applications', dept:'Cognitive Science', dist:['TAS'], wcult:[], desc:"Treats cognition as computation and constructs artificial systems to model cognitive strengths and weaknesses, combining lecture with hands-on active learning exercises using neural networks."},
+  {code:'COGS 50.03', name:'Cognitive Linguistics', dept:'Cognitive Science', dist:['TAS'], wcult:[], desc:"Investigates the relationship between language and human cognition, emphasizing how our bodies and brains shape language use, covering metaphor, categorization, frame semantics, goal bias, and prototype theory, applied to real-world phenomena like online media and humor."},
+  {code:'COGS 50.04', name:'Theories of Consciousness', dept:'Cognitive Science', dist:['TMV'], wcult:[], desc:"Explores how electrical activity in the brain gives rise to conscious experience, bringing together cutting-edge work from philosophy, psychology, and neuroscience on the nature of consciousness."},
+
+  // Comparative Literature
+  {code:'COLT 01', name:'Read the World', dept:'Comparative Literature', dist:['INT','LIT'], wcult:['CI'], desc:"Teaches comparative methods designed to confront the misunderstandings and mistranslations that constitute reading across the world's languages, locations, cultures, historical periods, and expressive forms, using text, movies, video games, anime, and digital arts."},
+  {code:'COLT 10.11', name:'Male Friendship from Aristotle to Almodóvar', dept:'Comparative Literature', dist:['LIT'], wcult:[], desc:"Examines representations of male relationships in literature, philosophy, psychoanalysis, and film, from classical texts and Cicero's \"De Amicitia\" to the cinema of Almodóvar and Truffaut, studying the construction of male friendship and its relationship to gender, class, and cultural politics."},
+  {code:'COLT 10.21', name:'Coming to America', dept:'Comparative Literature', dist:['LIT'], wcult:['W'], desc:"Studies narratives (memoirs, novels, poems, films, a play, a graphic novel, and a musical) about and by those who came to the US during the last 100 years, examining processes of assimilation and acculturation and how comparative literature has been shaped by immigrant scholars."},
+  {code:'COLT 10.31', name:'What counts as "new" or "French" or "feminist" or "fictional"?', dept:'Comparative Literature', dist:['INT','LIT'], wcult:[], desc:"Explores questions of feminism, newness, and fiction through readings of Rachilde, Colette, Simone de Beauvoir, Monique Wittig, Andrea Dworkin, and other modern French writers."},
+  {code:'COLT 19.01', name:'Translation: Theory and Practice', dept:'Comparative Literature', dist:['INT','LIT'], wcult:[], desc:"Works intensively on the craft of translation while exploring its practical, cultural, and philosophical implications through readings in theoretical and literary texts, with translation exercises and a final project."},
+  {code:'COLT 19.05', name:'Workshop in Literary Translation', dept:'Comparative Literature', dist:['INT','LIT'], wcult:[], desc:"A specialized workshop for students who want to hone their translation skill by practicing the craft and discussing the merit and quality of peer translations."},
+  {code:'COLT 19.09', name:'Introduction to Literary Translation', dept:'Comparative Literature', dist:['INT','LIT'], wcult:[], desc:"Introduces the art and craft of literary translation as an apprenticeship in intensive close reading and the development of literary style and voice, exploring the dangers of literalism and the creativity required to render tone, register, and allusion."},
+
+  // Computer Science / Digital Arts
+  {code:'COSC 1', name:'Introduction to Programming and Computation', dept:'Computer Science', dist:['TLA'], wcult:[], desc:"Introduces fundamental computational concepts useful across the sciences, social sciences, engineering, and digital arts. Students write interactive programs to analyze data, process text, draw graphics, and simulate physical systems. No prior experience assumed. Offered fall, winter, and spring; can be taken as early as first-year fall. Note: a redesigned CS major may be introduced by Fall 2026 -- check the CS website and ORC for updates."},
+  {code:'COSC 10', name:'Problem Solving via Object-Oriented Programming', dept:'Computer Science', dist:[], wcult:[], prereq:['COSC 1'], desc:"Develops computational problem-solving skills using Java; requires COSC 1 or equivalent experience. Offered fall, winter, and spring."},
+  {code:'COSC 30', name:'Discrete Mathematics in Computer Science', dept:'Computer Science', dist:['QDS'], wcult:[], desc:null},
+  {code:'COSC 50', name:'Software Design and Implementation', dept:'Computer Science', dist:['TLA'], wcult:[], desc:null},
+  {code:'COSC 70', name:'Foundations of Applied Computer Science', dept:'Computer Science', dist:['TLA'], wcult:[], desc:null},
+  {code:'CSDA 21', name:'Foundations of Digital Design', dept:'Digital Arts', dist:[], wcult:[], desc:"An introduction to graphic design, Photoshop, and motion graphics techniques."},
+  {code:'CSDA 22', name:'3D Computer Modeling', dept:'Digital Arts', dist:[], wcult:[], desc:"An introduction to 3D modeling where students learn Maya and make an environment, a biped that they animate, and an abstract image using special effects. See www.cs22.space for more information."},
+
+  // Earth and Planetary Sciences
+  {code:'EAPS 1', name:'How the Earth Works', dept:'Earth and Planetary Sciences', dist:['SLA'], wcult:[], desc:"Explores what went into making our planet — from the Big Bang to the formation and evolution of Earth — investigating how earthquakes, volcanic eruptions, and climate change are byproducts of the planet's ceaseless activity, and how to decode Earth's dynamic history from rocks, oceans, and glaciers."},
+  {code:'EAPS 2', name:'Evolution of Earth and Life', dept:'Earth and Planetary Sciences', dist:['SCI'], wcult:[], desc:"Examines how the biosphere has interacted with key geochemical, climatic, and plate tectonic processes over 4.5 billion years of Earth history, considering modern-day environmental change in the context of deep time."},
+  {code:'EAPS 3', name:'Elementary Oceanography', dept:'Earth and Planetary Sciences', dist:['SCI'], wcult:[], desc:"Studies physical, chemical, biological, and geological processes in the oceans and their interactions, covering oceans as a resource, part of the global climate engine, a record of Earth's environmental history, and the origin of life."},
+  {code:'EAPS 4', name:'Modeling the Earth System', dept:'Earth and Planetary Sciences', dist:['SLA'], wcult:[], desc:"Focuses on modeling the Earth as a coupled system, using the STELLA graphical modeling environment to represent physical, chemical, and biological processes and simulate natural phenomena like exchanges of mass and energy."},
+  {code:'EAPS 6', name:'Environmental Change', dept:'Earth and Planetary Sciences', dist:['SCI'], wcult:[], desc:"Investigates the science of natural and human-induced environmental change on a global scale, covering fundamentals of Earth science, natural resources, the climate system, natural and anthropogenic climate change, and potential solutions."},
+  {code:'EAPS 8', name:'Carbon Sequestration: Opportunities and Challenges', dept:'Earth and Planetary Sciences', dist:['SCI'], wcult:[], desc:"Introduces geochemical principles being investigated to sequester atmospheric CO2, examining the scale of the problem and strategies drawing on mineralogy, petrology, geochemistry, and oceanography, alongside discussions of scaling and environmental impacts."},
+  {code:'EAPS 9', name:'Earth Resources', dept:'Earth and Planetary Sciences', dist:['SCI'], wcult:[], desc:"Makes students aware of how the foundation and progress of society are based on the utilization of finite, unevenly distributed earth resources, discussing exploitation's effects on health, security, economy, and well-being."},
+
+  // East European, Eurasian and Russian Studies
+  {code:'RUSS 1', name:'First-Year Course in Russian', dept:'East European, Eurasian, and Russian Studies', dist:[], wcult:[], desc:"An introduction to Russian as a spoken and written language. Beginning language courses are offered only in the fall term, so interested students should start in the fall of their first year."},
+  {code:'UKRA 11', name:'Beginning Intensive Ukrainian', dept:'East European, Eurasian, and Russian Studies', dist:[], wcult:[], desc:"An introduction to Ukrainian as a spoken and written language. Offered as a fall intensive course, followed by UKRA 3."},
+  {code:'EEER 7', name:'First Year Seminar (various topics)', dept:'East European, Eurasian, and Russian Studies', dist:[], wcult:[], desc:null},
+  {code:'EEER 10', name:'Understanding Russia', dept:'East European, Eurasian, and Russian Studies', dist:['TMV'], wcult:['CI'], desc:"Examines Russia as a cultural, national, and historical entity part of and yet apart from both Europe and Asia, surveying Russian history and dealing with the art, music, and popular literature of Russia, concluding with the coexistence of Russian and Soviet culture."},
+  {code:'EEER 36', name:"Leo Tolstoy's Art and Thought", dept:'East European, Eurasian, and Russian Studies', dist:['LIT'], wcult:['W'], desc:"Traces Tolstoy's lifelong struggle to overcome his fear of death and find meaning, following the evolution of this theme through his major novels, War and Peace and Anna Karenina, concluding with his post-conversion prose."},
+  {code:'EEER 39', name:'Wonder Works from Ukraine: Folklore, Literature, Films', dept:'East European, Eurasian, and Russian Studies', dist:['LIT'], wcult:['W'], desc:null},
+  {code:'EEER 50.04', name:'Behind the Iron Curtain: The Cold War From the Other Side', dept:'East European, Eurasian, and Russian Studies', dist:['SOC'], wcult:['CI'], desc:null},
+
+  // Economics
+  {code:'ECON 01', name:'The Price System: Analysis, Problems and Policies', dept:'Economics', dist:['SOC'], wcult:[], desc:"Emphasizes problems and policies of current interest as they relate to resource use and the distribution of income and output, introducing supply and demand theory to examine topics like antitrust policy, labor economics, international trade, development, poverty, and the environment."},
+  {code:'ECON 03', name:'Essential Mathematics for Economic Analysis', dept:'Economics', dist:['QDS'], wcult:[], prereq:['MATH 1'], desc:"Covers many of the same basic calculus topics as Math 3, but with a focus on the mathematical structure of economics, including derivatives for consumer demand and labor productivity, integrals for income distributions, and key statistical measures for econometrics. Can be paired with Econ 3 in the winter as an alternative way to satisfy the Math 3 prerequisite for the Economics major (taking Math 1 in the fall first)."},
+  {code:'ECON 10', name:'Introduction to Statistical Methods', dept:'Economics', dist:['QDS'], wcult:[], prereq:['MATH 3'], desc:"Introduces basic concepts and methods of statistics, covering descriptive statistics and inference (estimation and hypothesis testing) for one and two variables, along with the necessary probability theory."},
+  {code:'ECON 21', name:'Microeconomics', dept:'Economics', dist:['SOC'], wcult:[], prereq:['ECON 01', 'MATH 3'], desc:"A study of the pricing and allocation process in the private economy, covering demand and production theory and the determination of prices and quantities in competitive and noncompetitive markets."},
+  {code:'ECON 22', name:'Macroeconomics', dept:'Economics', dist:['SOC'], wcult:[], prereq:['ECON 01', 'MATH 3'], desc:"Concerned with the behavior of the economy as a whole, particularly fluctuations in economic activity, developing general equilibrium models to analyze GNP, unemployment, inflation, and output growth, and evaluating monetary and fiscal policy."},
+  {code:'ECON 24', name:'Development Economics', dept:'Economics', dist:['SOC','INT'], wcult:[], prereq:['ECON 01', 'ECON 10'], desc:"Uses economic analysis to understand contemporary issues in low-income countries — poverty, hunger, child mortality, education, gender inequality, environmental degradation, and infectious disease — and the role of markets, civil organizations, and government policy."},
+  {code:'ECON 26', name:'The Economics of Financial Intermediaries and Markets', dept:'Economics', dist:['SOC'], wcult:[], prereq:['ECON 01'], desc:"Examines the nature and function of financial intermediaries (banks, mutual funds, insurance companies) and securities markets, analyzing liquidity, risk management, and financial system regulation."},
+  {code:'ECON 27', name:'Labor Economics', dept:'Economics', dist:['SOC'], wcult:[], prereq:['ECON 01'], desc:"Studies the economic behavior of employers and employees in the labor market, covering human capital investment, compensation structure, contract negotiations, and nationally debated issues like welfare reform and immigration policy."},
+  {code:'ECON 28', name:'Public Finance and Public Policy', dept:'Economics', dist:['SOC'], wcult:[], prereq:['ECON 01'], desc:"Analyzes the economic effects of public policies in environmental pollution, social insurance, retirement income, health, and poverty alleviation, and how governments finance their operations, using empirical evidence on health reform, UBI, and Social Security."},
+  {code:'ECON 38', name:'The Economics of Governments and Public Policy', dept:'Economics', dist:['SOC'], wcult:[], prereq:['ECON 01', 'ECON 10'], desc:"Considers governments as economic actors, investigating how social decisions are made, why governments fail, and how different levels of government fund public goods, using K-12 education as a detailed case study."},
+  {code:'ECON 39', name:'International Trade', dept:'Economics', dist:['SOC','INT'], wcult:[], prereq:['ECON 01'], desc:"Deals with the causes and consequences of international trade and factor movements, covering theories of why nations trade, the tariff, trade policy, and the formation of the multinational corporation."},
+  {code:'ECON — Major Overview', name:'Economics Major Requirements (reference)', dept:'Economics', dist:[], wcult:[], prereq:[], desc:"Not an actual course — a reference card summarizing the Economics major prerequisites. Economics 1 is required before every other course in the major. The other prerequisites are Economics 10 (Statistical Methods) and Math 3 (Calculus) — or, alternatively, Math 1 in the fall paired with Econ 3 in the winter to satisfy the Math 3 requirement. Placement out of Econ 1: score of 5 on the AP Micro exam, 6+ on the IB HL exam, an A in British A-Level Economics, or 21/30+ on Dartmouth's local placement exam. An AP Statistics score that exempts you from Math 10 also exempts you from Econ 10. Econ 21 and 22 are the logical next courses for most majors. DOUBLE MAJOR OR MAJOR/MINOR WITH BIOLOGY: the guide doesn't spell out a formal overlap between the two majors, but the math sequencing pairs naturally — Math 3 (required for Econ) leads into Math 8 or higher, which is one of the options that satisfies Biology's quantitative-course prerequisite. Beyond that shared math track, the two majors' required courses are independent of each other (Biology's other prerequisite is Chem 5), so plan on a full, mostly non-overlapping course load in both departments rather than expecting much double-counting — worth confirming the specifics with your Biology and Economics advisors once you've settled on major vs. minor."},
+
+  // Education
+  {code:'EDUC 01', name:'Introduction to Education: Learning, Development, and Teaching', dept:'Education', dist:['SOC'], wcult:[], desc:"Explores how pre-Kindergarten through high school education is informed by scientific evidence, including the educational system in America, the research-to-practice gap, social and emotional development in school, and learning and teaching in early math, science, and reading."},
+  {code:'EDUC 17', name:'What Works in Education', dept:'Education', dist:['SOC'], wcult:[], desc:null},
+  {code:'EDUC 27', name:'The Impact of Poverty on Education', dept:'Education', dist:['SOC'], wcult:[], desc:null},
+  {code:'EDUC 32', name:'Learning and Education Across Cultures', dept:'Education', dist:['SOC'], wcult:['CI'], desc:null},
+  {code:'EDUC 46', name:'STEM Learning and Education', dept:'Education', dist:['SOC'], wcult:[], desc:null},
+  {code:'EDUC 47', name:'Social and Emotional Development', dept:'Education', dist:['SOC'], wcult:[], desc:null},
+  {code:'EDUC 50', name:'The Reading Brain: Education and Development', dept:'Education', dist:['SOC'], wcult:[], desc:null},
+  {code:'EDUC 52', name:'Topics in Educational Theory', dept:'Education', dist:['SOC'], wcult:[], desc:null},
+  {code:'EDUC 64', name:'Development in the Exceptional Child', dept:'Education', dist:['SOC'], wcult:[], desc:null},
+
+  // Engineering Sciences
+  {code:'ENGS 2', name:'Integrated Design: Engineering, Architecture, and Building Technology', dept:'Engineering Sciences', dist:['TAS'], wcult:[], desc:"An introduction to the integrated design of structures and the evolving role of architects and engineers, investigating design excellence as a product of deep collaboration and studying several structures and their designers in depth."},
+  {code:'ENGS 6', name:'Technology and Biosecurity', dept:'Engineering Sciences', dist:['TAS'], wcult:[], desc:"Introduces the technologies used to combat biological threats to security, from pandemic influenza to bioterrorism, exploring the dual role technology plays in enhancing and destabilizing security through nanotechnology, synthetic biology, and mass spectrometry."},
+  {code:'ENGS 11', name:'The Way Things Work: Sketching to See', dept:'Engineering Sciences', dist:['ART'], wcult:[], desc:"Students sketch and build models to help understand and communicate how engineered systems or processes work, learning new sketching and communication techniques each week and maintaining a sketchbook."},
+  {code:'ENGS 12', name:'Design Thinking', dept:'Engineering Sciences', dist:['TAS'], wcult:[], desc:"Lays the foundation for the cognitive strategies and methodologies of creative design practice, applying design thinking to innovation across products, services, interactive technology, environments, and experiences."},
+  {code:'ENGS 20', name:'Introduction to Scientific Computing', dept:'Engineering Sciences', dist:['TAS'], wcult:[], desc:"Introduces concepts and techniques for creating computational solutions to problems in engineering and science, developing the essentials of computer programming in C. Can be replaced by COSC 1 and 10 for students who prefer that path."},
+  {code:'ENGS 21', name:'Introduction to Engineering', dept:'Engineering Sciences', dist:['TLA'], wcult:[], desc:"Introduces engineering through participation in a complete team design project, including building and testing prototypes, applying principles of analysis, experimentation, and design to a real problem from concept to final recommendations. Recommended for the winter or spring of your first year, or the beginning of sophomore year."},
+
+  // English and Creative Writing
+  {code:'CRWT 10', name:'Writing and Reading Fiction', dept:'English and Creative Writing', dist:['ART'], wcult:[], desc:"An introductory workshop and reading course in fiction, designed to allow students to work in all fictive modes."},
+  {code:'CRWT 11', name:'Writing and Reading Creative Nonfiction', dept:'English and Creative Writing', dist:['ART'], wcult:[], desc:null},
+  {code:'CRWT 12', name:'Writing and Reading Poetry', dept:'English and Creative Writing', dist:['ART'], wcult:[], desc:"An introductory workshop and reading course in poetry, designed to have students consider different aspects of writing and the various elements integral to the genre."},
+  {code:'ENGL 1', name:'Literary History I', dept:'English and Creative Writing', dist:['LIT'], wcult:['W'], desc:"An overview of English literature from the Anglo-Saxon period through the Middle Ages and into the seventeenth century, covering literature up to the mid-seventeenth century."},
+  {code:'ENGL 2', name:'Literary History II', dept:'English and Creative Writing', dist:['LIT'], wcult:['W'], desc:null},
+  {code:'ENGL 3', name:'Literary History III', dept:'English and Creative Writing', dist:['LIT'], wcult:['W'], desc:null},
+  {code:'ENGL 15', name:'Shakespeare', dept:'English and Creative Writing', dist:['LIT'], wcult:['W'], desc:"A study of about ten plays spanning Shakespeare's career, including comedies, histories, tragedies, and romances, attending to his language, dramatic practices, theatrical milieu, and the social, political, and philosophical issues raised by the plays."},
+  {code:'ENGL 23', name:'Romantic Literature: Aesthetics and Ideology from the French Revolution to Frankenstein', dept:'English and Creative Writing', dist:['LIT'], wcult:['W'], desc:null},
+  {code:'ENGL 29', name:'American Fiction to 1900', dept:'English and Creative Writing', dist:['LIT'], wcult:['W'], desc:null},
+  {code:'ENGL 30', name:'Early Black American Literature', dept:'English and Creative Writing', dist:['LIT'], wcult:['CI'], desc:null},
+  {code:'ENGL 31', name:'Asian American Literature and Culture', dept:'English and Creative Writing', dist:['LIT'], wcult:['CI'], desc:"Examines narratives of migration to, from, and between the Americas by groups from East, South, and Southeast Asia, analyzing novels, fiction, poetry, and films against the backdrop of imperialism, exclusion, internment, and social movements around race, class, gender, sexuality, and citizenship."},
+  {code:'ENGL 34', name:'From "Anna Christie" to "Hamilton" (and Donald Trump): Modern American Drama', dept:'English and Creative Writing', dist:['LIT'], wcult:['W'], desc:"Takes up iconic plays in modern and contemporary American drama — O'Neill, Miller, Hansberry, Williams, Wilson, Kushner, Lori-Parks, Miranda — considering how they were shaped by and helped shape U.S. culture and politics."},
+  {code:'ENGL 37', name:'Contemporary American Poetry', dept:'English and Creative Writing', dist:['LIT'], wcult:['W'], desc:"Explores the most exciting developments in American poetry from 1960 to the present, considering movements like the Beats, the New York School, the Confessionals, the Black Arts Movement, and performance and spoken word poetry through close readings of individual poets."},
+  {code:'ENGL 45', name:'Introduction to Literary Theory', dept:'English and Creative Writing', dist:['LIT'], wcult:[], desc:"Introduces leading texts, concepts, and practices of theoretical criticism, including structuralism, deconstruction, psychoanalysis, feminism, new historicism, post-colonialism, post-modernism, queer theory, and cultural studies."},
+
+  // Environmental Studies
+  {code:'ENVS 2', name:'Introduction to Environmental Science', dept:'Environmental Studies', dist:['SCI'], wcult:[], desc:"Studies the physical, biological, chemical, and social processes underlying current environmental problems, surveying pollution, biodiversity, energy use, recycling, land degradation, and human population dynamics. Students who score a 4 or 5 on the Environmental Science AP exam receive credit on entrance for this course."},
+  {code:'ENVS 3', name:'Environment and Society', dept:'Environmental Studies', dist:['SOC'], wcult:[], desc:"Analyzes the causes and solutions of environmental problems through social science disciplines, exploring how laws, public policies, social norms, and shared understandings can align individual action with collective well-being, and the role of ecology and ecosystem science."},
+  {code:'ENVS 17', name:'Marine Policy', dept:'Environmental Studies', dist:['SOC'], wcult:[], desc:"Explores significant human-ocean interactions from scientific and policy perspectives, from sea level rise to pollution to overfishing, critically evaluating relevant policy solutions and the politics surrounding ocean issues."},
+  {code:'ENVS 80.18', name:'The Control of Nature', dept:'Environmental Studies', dist:['TAS'], wcult:[], desc:"Explores the convergence of speculative fiction and cutting-edge science, delving into geoengineering, designer genes, carbon removal, and renewable energy, critically examining the ethical consequences of manipulating the environment."},
+
+  // Film and Media Studies
+  {code:'FILM 4', name:'Introduction to Thinking About Media', dept:'Film and Media Studies', dist:['ART'], wcult:['W'], terms:['Fall'], desc:"Beginning with the concept of mediation, introduces the scope of disciplines in Film & Media Studies, examining key technical and critical concepts for understanding media texts, artifacts, archives, and the cultures around them."},
+  {code:'FILM 5', name:'Introduction to Making Media', dept:'Film and Media Studies', dist:['ART'], wcult:['W'], terms:['Fall'], desc:"A foundational, experiential dive into media creation, introducing the building blocks of media creation in gaming, interactive, data-driven, animated, live action, archival, and print forms through comparative case studies."},
+  {code:'FILM 36.01', name:'Experimental Videomaking (Autobiography)', dept:'Film and Media Studies', dist:['ART'], wcult:[], terms:['Fall'], desc:"A hybrid media-making course covering the basics of developing a personal video from idea to realization, emphasizing forms outside traditional narrative or documentary, culminating in a final project and public screening."},
+
+  // French and Italian
+  {code:'FREN 1', name:'Introductory French 1', dept:'French and Italian', dist:[], wcult:[], desc:"Emphasizes speaking and dialogue, learning to introduce family and friends, describe daily life, and talk about leisure, with a final oral presentation describing your hometown."},
+  {code:'FREN 2', name:'Introductory French 2', dept:'French and Italian', dist:[], wcult:[], prereq:['FREN 1'], desc:"Expands expression and deepens cultural knowledge with introductions to multiple francophone countries, culminating in an oral presentation on a francophone country's history, geography, or traditions."},
+  {code:'FREN 11', name:'French 11 Intensive French', dept:'French and Italian', dist:[], wcult:[], desc:"Combines FREN 1 and 2 in one term for students with prior French exposure or a strong background in another Romance language, preparing students for FREN 3 or the Toulouse LSA+ program."},
+  {code:'FREN 3', name:'Introductory French 3', dept:'French and Italian', dist:[], wcult:[], prereq:['FREN 2'], desc:"Covers travel, technology, wellness, healthcare, and social relationships, with a final assignment researching a current issue facing a francophone country."},
+  {code:'FREN 5', name:'Conversations and Style', dept:'French and Italian', dist:['SOC'], wcult:['W'], prereq:['FREN 3'], desc:"A bridge course building cultural knowledge through historical and contemporary French and francophone societies — political identity, literature, gender relations, media, religion, and immigration — while expanding active use of French. FREN 5 and 6 (or exemption) are prerequisites for the department's Paris Foreign Study Program (FSP)."},
+  {code:'FREN 6', name:'Introduction to French Texts and Contexts', dept:'French and Italian', dist:['LIT'], wcult:['W'], prereq:['FREN 5'], desc:"An introduction to French literature, culture, and media across time, providing tools to read and analyze texts critically through literary works, films, and other cultural artifacts."},
+  {code:'FREN 14', name:'Dartmouth Meets the French Enlightenment', dept:'French and Italian', dist:['TMV'], wcult:['W'], desc:"Traces the origin of Dartmouth's fraternities to the secret societies, masonic lodges, salons, and cafés that arose before the French Revolution, and how 18th-century Enlightenment texts on human rights migrated into 19th-century fraternity debates."},
+  {code:'ITAL 1', name:'Introductory Italian 1', dept:'French and Italian', dist:[], wcult:[], desc:"An introduction to Italian as a spoken and written language, with emphasis on practical conversation and regular drill sessions."},
+  {code:'ITAL 2', name:'Introductory Italian 2', dept:'French and Italian', dist:[], wcult:[], prereq:['ITAL 1'], desc:"Rapid review and continued study of Italian fundamentals with intensive vocabulary building, plus an introduction to Italian culture and civilization."},
+  {code:'ITAL 11', name:'Intensive Italian', dept:'French and Italian', dist:[], wcult:[], desc:"Combines ITAL 1 and 2 in one term for students with little Italian but a strong background in another Romance language, preparing for ITAL 3 or the Rome LSA+ program."},
+  {code:'ITAL 3', name:'Introductory Italian 3', dept:'French and Italian', dist:[], wcult:[], prereq:['ITAL 2'], desc:"Reinforces and refines spoken and written language skills through grammar review and exposure to a broad range of language styles from colloquial to literary. A grade of B or better in ITAL 3 is the prerequisite for the Rome LSA+ program in Winter."},
+  {code:'ITAL 9', name:'Advanced Language Through Culture', dept:'French and Italian', dist:[], wcult:[], prereq:['ITAL 3'], desc:"Explores modern and contemporary Italian literature and culture through topics like political identity, gender relations, media, and daily life, expanding active use of Italian."},
+  {code:'ITAL 14', name:'Journey to Italy: An Introduction to Italian Culture', dept:'French and Italian', dist:['SOC'], wcult:['CI'], desc:"Introduces students to Italian culture, encouraging critical thinking about identity through stereotypes, modern history, food culture, the visual arts, immigration, sports, and the mafia. No prerequisites."},
+  {code:'ITAL 33.01', name:'Dante: The Divine Comedy', dept:'French and Italian', dist:['LIT'], wcult:['W'], desc:"Studies Dante's work as a struggle between personal desire, social obligation, and the conflicting cultures of Christian religion and the body politic, along with the many ways his work has been interpreted, translated, and appropriated over seven centuries. Taught in English."},
+  {code:'FRIT 31', name:'How Languages are Learned', dept:'French and Italian', dist:['SOC'], wcult:['W'], desc:"Introduces students to language acquisition research, using a design thinking approach to explore language awareness, bilingualism, early-child language learning, and the role of technology in language learning. Taught in English."},
+
+  // Geography
+  {code:'GEOG 1.02', name:'The Natural Environment', dept:'Geography', dist:['SLA'], wcult:[], desc:"Presents the fundamentals of atmospheric processes, examines physical controls on landforms, soils, and vegetation biomes, and explains the earth's physical geography, emphasizing human disturbance through climate change, land use, and deforestation."},
+  {code:'GEOG 2.01', name:'Introduction to Human Geography', dept:'Geography', dist:['SOC','INT'], wcult:['CI'], desc:"Provides an understanding of how human societies organize their geographic space, using principles of location, place, territoriality, geopolitics, migration, gender, and economic change to examine the geographic distribution of human activity. Students who score a 5 on the AP Human Geography exam receive credit on entrance for this course; a score of 4 exempts it as a major prerequisite."},
+  {code:'GEOG 8.01', name:'Introduction to International Development', dept:'Geography', dist:['SOC','INT'], wcult:['NW'], desc:"Addresses why some countries are rich and others persistently poor from the perspective of critical human geography, examining how development meanings and practices have varied by time, place, colonial history, and globalization across Latin America, Africa, and Asia."},
+  {code:'GEOG 9.01', name:'Geographical Information Systems', dept:'Geography', dist:['TLA'], wcult:[], desc:"Focuses on the basic principles of GIS, including data capture and manipulation, methods of spatial interpolation, and GIS trends and applications."},
+  {code:'GEOG 18.01', name:'Climate Extremes on a Warming Planet', dept:'Geography', dist:[], wcult:[], desc:"Examines climate-related disasters — Somalian drought, Greenland wildfires, Southeast Asian floods, and Puerto Rico's hurricanes — and whether such impacts reflect geophysical trends or social, political, and economic choices."},
+
+  // German
+  {code:'GERM 1', name:'German 1', dept:'German Studies', dist:[], wcult:[], desc:"Immersive introductory study of German language and culture, focused on proficiency in basic grammar and vocabulary through readings, viewings, games, drills, and project work."},
+  {code:'GERM 3', name:'German 3', dept:'German Studies', dist:[], wcult:[], desc:"Continued immersive study of German language and culture with a focus on proficiency through films, literary texts, non-fiction, creative assignments, and a separate authentic conversation section."},
+  {code:'GERM 10.01', name:'Intermediate German Language and Culture: To Be Young in Germany', dept:'German Studies', dist:['SOC'], wcult:['CI'], desc:"An intermediate-level course investigating youth cultures in the German-speaking world across four units: fairy tales and nation building, sexual awakening, authoritarian regimes, and post-war youth rebellion. Taught in German."},
+  {code:'GERM 42.04', name:'From the Typewriter to Virtual Reality: Modern Media Theory', dept:'German Studies', dist:['ART'], wcult:['W'], desc:"Explores foundational media-theoretical writings from the 20th and 21st centuries, examining the relationship between media technologies, perception, and communication, in dialog with the \"German tradition\" of media studies (McLuhan, Baudrillard, Virilio, Parikka). Taught in English."},
+  {code:'GERM 64.10', name:'After Nazism: German Ruins', dept:'German Studies', dist:['TMV'], wcult:['CI'], desc:"Examines Germany after Hitler as a case study in collapse — of cities, beliefs, ideologies, and the German language itself — exploring artworks and mediums that attempted to shape a hopeful future from a disgraced genocidal past. Taught in German."},
+
+  // Government
+  {code:'GOVT 3', name:'The American Political System', dept:'Government', dist:['SOC'], wcult:['W'], desc:"Examines the American political process as manifested in voting behavior, parties, interest groups, the Presidency, Congress, and the Judiciary, providing a theoretical framework for evaluating decision-making, bargaining, and democratic control."},
+  {code:'GOVT 4', name:'Politics of the World', dept:'Government', dist:['SOC','INT'], wcult:[], desc:"Examines democracy and dictatorship, revolutions and social movements, and political development around the world, exploring how political decisions are reached and how authority is exercised without being abused."},
+  {code:'GOVT 5', name:'International Politics', dept:'Government', dist:['SOC','INT'], wcult:[], desc:"Introduces the systematic analysis of international society, the factors motivating foreign policies, power and economic relations, cultural differences, nationalism, and the structuring of international institutions."},
+  {code:'GOVT 6', name:'Political Ideas', dept:'Government', dist:['TMV'], wcult:['W'], desc:"Introduces political philosophy, opening with the contrast between Plato and Machiavelli on justice and power, then examining liberalism, socialism, and conservatism through Locke, Mill, Rousseau, Marx, and Burke."},
+  {code:'GOVT 10', name:'Quantitative Political Analysis', dept:'Government', dist:['QDS'], wcult:[], desc:"Provides tools for empirical research in political science, covering causality, theory structure, and hypothesis testing, and introducing contingency tables and linear regression. Recommended after one introductory course."},
+
+  // History
+  {code:'HIST 1', name:'Turning Points in American History', dept:'History', dist:['SOC'], wcult:['W'], desc:"Analyzes and evaluates a select number of \"pivotal moments\" over four centuries of American history, combining close scrutiny of documents with an awareness of contingency, determinism, and historical agency."},
+  {code:'HIST 4.02', name:'Introduction to Early Islamic History', dept:'History', dist:['INT','SOC'], wcult:['NW'], desc:"Charts the late antique pre-Islamic world, the formation of Islam, the rise of centralized empires such as the Umayyads and Abbasids, and the fragmentation of their central authority."},
+  {code:'HIST 4.03', name:'Introduction to the Modern Middle East and North Africa', dept:'History', dist:['SOC'], wcult:['NW'], desc:"Gives a nuanced overview of the modern histories of the Middle East and North Africa, using primary and secondary materials to familiarize students with the historical, cultural, and social processes that transformed the region within a global framework."},
+  {code:'HIST 5.04', name:'Introduction to Korean Culture', dept:'History', dist:['SOC'], wcult:['CI'], desc:"Examines Korea's visual and textual expressions from the pre-modern age to the twentieth century, exploring the origins of Korean national and cultural identities without generalized or uncritical categories."},
+  {code:'HIST 5.05', name:'The Emergence of Modern Japan', dept:'History', dist:['SOC'], wcult:['NW'], desc:"A survey of Japanese history from the mid-nineteenth century to the present, covering the building of a modern state, industrialization, the rise and fall of the Japanese colonial empire, and the postwar economic \"miracle.\""},
+  {code:'HIST 5.06', name:'Empire and Decolonization in South Asia', dept:'History', dist:['INT','SOC'], wcult:['NW'], desc:"Charts South Asia's transformation from imperial colonies to postcolonial nation-states, examining colonial rule, anticolonial nationalisms, partition, and how race, caste, religion, gender, and class shaped present-day realities across India, Pakistan, Bangladesh, Sri Lanka, and Afghanistan."},
+  {code:'HIST 8.03', name:'Happiness: A History', dept:'History', dist:['TMV'], wcult:['W'], desc:"Introduces a range of perspectives on human happiness, individual and collective, past and present, charting its emergence since the 18th century as a basic human expectation, drawing on history, philosophy, religion, and economics."},
+
+  // Humanities 1 & 2
+  {code:'HUM 1', name:'Global Humanities I', dept:'Humanities 1 and 2', dist:[], wcult:[], desc:"A team-taught course introducing first-year students to the interdisciplinary richness of the humanities through impactful works across literary, philosophical, visual, and performing arts, organized around broad themes like \"What is the good life?\" and \"War and Peace.\" Satisfies the Writing 5 requirement."},
+  {code:'HUM 2', name:'Global Humanities II', dept:'Humanities 1 and 2', dist:[], wcult:[], desc:"Forms a sequence with Global Humanities I, continuing the exploration of compelling literary texts, critical essays, films, and artworks across global culture. Fulfills the First-Year Seminar requirement."},
+
+  // International Studies
+  {code:'INTS 15', name:'Violence & Security', dept:'International Studies', dist:['SOC', 'INT'], wcult:[], desc:null},
+  {code:'INTS 16', name:'Introduction to International Development', dept:'International Studies', dist:['SOC','INT'], wcult:['NW'], desc:null},
+  {code:'INTS 17', name:'Cultures, Places, & Identities', dept:'International Studies', dist:['SOC'], wcult:['CI'], desc:null},
+  {code:'INTS 18', name:'Global Health & Society', dept:'International Studies', dist:['SOC'], wcult:['NW'], desc:null},
+
+  // Jewish Studies
+  {code:'JWST 06', name:'Introduction to Judaism', dept:'Jewish Studies', dist:['TMV'], wcult:['W'], desc:"Offers an introduction to Judaism by examining development, observance, and study of Jewish law; philosophical contemplation; and mystical experience, considering ancient and modern challenges to the tradition."},
+  {code:'JWST 11', name:'History and Culture of the Jews II: The Modern Period', dept:'Jewish Studies', dist:['SOC'], wcult:['CI'], desc:"Provides a survey of Jewish history and culture from the European Enlightenment to the establishment of the State of Israel."},
+  {code:'JWST 26', name:'European Jewish Intellectuals', dept:'Jewish Studies', dist:['SOC'], wcult:['CI'], desc:null},
+  {code:'JWST 34.02', name:'History of Jews in Germany', dept:'Jewish Studies', dist:['SOC'], wcult:['CI'], desc:"An introductory survey of the history, culture, and identity of the Jews in Germany from the 18th century to the present, examining unique Jewish identities as they emerged from internal colonization through anti-Semitism, Nazism, two world wars, and reunification."},
+  {code:'JWST 34.05', name:'Jewish Folklore', dept:'Jewish Studies', dist:['INT','LIT'], wcult:['W'], desc:"Asks what makes stories and songs necessary to identity, dignity, and spirituality, focusing on Jewish folklore's stories, songs, and bordering genres, experienced through singing and enacting a folk-play."},
+  {code:'JWST 40', name:'Politics of Israel and Palestine', dept:'Jewish Studies', dist:['INT','SOC'], wcult:['NW'], desc:"Explores the century-old conflict from the political structures and changing narratives of Israelis and Palestinians, from the Zionist and Arab national movements through the founding of Israel, 1967, the PLO, and Hamas, considering the plausibility of a two-state solution."},
+
+  // Latin American, Latino and Caribbean Studies
+  {code:'LACS 1', name:'Introduction to Latin America and the Caribbean', dept:'Latin American, Latino, and Caribbean Studies', dist:['SOC'], wcult:['NW'], desc:"Introduces the geographical conditions, historical roots, and enduring cultural diversity of Latin America and the Caribbean, drawing on historical and anthropological understandings to assess recent developments."},
+  {code:'LACS 3', name:'Introduction to Latino Studies', dept:'Latin American, Latino, and Caribbean Studies', dist:['SOC'], wcult:['CI'], desc:"Addresses the history of ethnic communities, transnational identities, race, class, ethnicity, gender and sexuality, political and social movements, and media and popular culture, drawing from the social sciences and humanities."},
+  {code:'LACS 30.04', name:'Black Culture and Politics in Brazil', dept:'Latin American, Latino, and Caribbean Studies', dist:['INT','SOC'], wcult:['CI'], desc:"Examines the development of the theorization of race, racial identity, and race relations in contemporary Brazil."},
+  {code:'LACS 30.21', name:'The History of Cuba', dept:'Latin American, Latino, and Caribbean Studies', dist:['INT'], wcult:['W'], desc:"Explores the complicated, entangled, and at times contradictory history of Cuba, understanding how the island has come to occupy such a unique position in geopolitics and popular imagination."},
+  {code:'LACS 30.22', name:'Latin America and the Invention of Nature', dept:'Latin American, Latino, and Caribbean Studies', dist:['SOC'], wcult:['NW'], desc:"Delves into how nature has been historically constructed through the integration of Latin America, its people, and its landscapes into our collective vision of the world."},
+  {code:'LACS 40.05', name:'Sports in the Americas', dept:'Latin American, Latino, and Caribbean Studies', dist:['INT','SOC'], wcult:['CI'], desc:"Seeks to understand the role sports has played, and continues to play, in the shaping of American hemispheric culture."},
+
+  // Linguistics
+  {code:'LING 1', name:'Introductory Linguistics', dept:'Linguistics', dist:['QDS'], wcult:[], desc:"A fascinating introduction to the mysteries and complexities of human language, teaching methods for analyzing sound systems (phonology), word structure (morphology), sentence patterns (syntax), and systems of meaning (semantics and pragmatics)."},
+  {code:'LING 05.02', name:'The Digital Portfolio: Theory, Design, and Function', dept:'Linguistics', dist:['TAS'], wcult:[], desc:null},
+  {code:'LING 11.13', name:'The Language-Music Connection', dept:'Linguistics', dist:['SOC'], wcult:[], desc:null},
+  {code:'LING 11.25', name:'Introduction to Indigenous Languages', dept:'Linguistics', dist:['SOC'], wcult:['NW'], desc:"A hybrid course combining independent study with seminar-style discussion, where students design a plan for deep engagement with a target indigenous language and discuss relevant methodologies and case studies."},
+  {code:'LING 15', name:'Language Acquisition', dept:'Linguistics', dist:['SOC'], wcult:[], desc:"Provides an in-depth overview of typical language development from fetus to adult, as well as atypical development, informed by cognitive science, speech and hearing, psychology, philosophy, and neurology."},
+  {code:'LING 17', name:'Sociolinguistics', dept:'Linguistics', dist:['SOC'], wcult:['CI'], desc:"Deals with the ways language serves to define and maintain group identity and social relationships, considering regional and social variation, language and ethnicity/gender, pidgin and creole languages, and language endangerment."},
+
+  // Mathematics
+  {code:'MATH 1', name:'Introduction to Calculus', dept:'Mathematics', dist:['QDS'], wcult:[], desc:"An introduction to single-variable calculus for students who have not taken calculus before, reviewing algebra and pre-calculus techniques and covering functions, limits, continuity, and derivatives. If you're unsure whether to start with Math 1 or Math 3, take the Math 1 Placement Exam on Canvas -- a score below 70% suggests starting with Math 1."},
+  {code:'MATH 3', name:'Calculus', dept:'Mathematics', dist:['QDS'], wcult:[], desc:"An introduction to single-variable calculus for students who have seen some calculus before, revisiting convergence, limits, and derivatives in greater depth before moving to applications and integration theory."},
+  {code:'MATH 7', name:'First-Year Seminar', dept:'Mathematics', dist:[], wcult:[], desc:null},
+  {code:'MATH 8', name:'Calculus of Functions of One and Several Variables', dept:'Mathematics', dist:['QDS'], wcult:[], prereq:['MATH 3'], desc:"A sequel to Math 3, covering one-variable calculus topics like integration techniques, sequences and series, and differential equations, plus scalar-valued functions of several variables and optimization. Students with a 4 or 5 on the AP Calculus BC exam receive credit for Math 3 and 8 and are usually placed into Math 9 or 11 instead of starting here."},
+  {code:'MATH 9', name:'Multivariable Calculus with Linear Algebra', dept:'Mathematics', dist:['QDS'], wcult:[], desc:"Includes the multivariable calculus material of Math 8 along with a brief introduction to linear algebra concepts, for first-year students who completed a BC calculus curriculum. Finishes the calculus sequence either alone or paired with Math 13."},
+  {code:'MATH 10', name:'Introduction to Statistics', dept:'Mathematics', dist:['QDS'], wcult:[], desc:"Introduces the student to the basic concepts and methods of statistics. Also satisfies the equivalent statistics requirement used by Economics 10, Government 10, Psychology 10, Sociology 10, and QSS 15."},
+  {code:'MATH 11', name:'Accelerated Multivariable Calculus', dept:'Mathematics', dist:['QDS'], wcult:[], desc:"A course in multivariable calculus for students who completed a BC calculus curriculum and earned a 4 or 5 on the AP exam, covering all material in the second half of Math 8 and Math 13."},
+  {code:'MATH 13', name:'Multivariable Calculus', dept:'Mathematics', dist:['QDS'], wcult:[], prereq:['MATH 8'], desc:"A sequel to Math 8 providing an introduction to calculus of vector-valued functions, including iterated/double/triple/surface integrals, vector fields, Green's theorem, and Stokes' theorem."},
+  {code:'MATH 17', name:'An Introduction to Mathematics Beyond Calculus', dept:'Mathematics', dist:['QDS'], wcult:[], desc:null},
+  {code:'MATH 20', name:'Discrete Probability', dept:'Mathematics', dist:['QDS'], wcult:[], desc:null},
+  {code:'MATH 22', name:'Linear Algebra', dept:'Mathematics', dist:['QDS'], wcult:[], desc:null},
+  {code:'MATH 23', name:'Differential Equations', dept:'Mathematics', dist:['QDS'], wcult:[], desc:null},
+  {code:'MATH 24', name:'Linear Algebra (Honors Section of Mathematics 22)', dept:'Mathematics', dist:['QDS'], wcult:[], desc:null},
+  {code:'MATH 28', name:'Introduction to Combinatorics', dept:'Mathematics', dist:['QDS'], wcult:[], desc:null},
+
+  // Middle Eastern Studies
+  {code:'HEBR 1', name:'First-Year Courses in Modern Hebrew', dept:'Middle Eastern Studies', dist:[], wcult:[], desc:"An introduction to spoken and written Modern Israeli Hebrew, emphasizing active functional communication, reading comprehension, and listening comprehension, with mandatory drill sessions."},
+  {code:'ARAB 1', name:'First-Year Courses in Arabic', dept:'Middle Eastern Studies', dist:[], wcult:[], desc:"The introductory course for Arabic, teaching the sounds and letters of the alphabet, basic vocabulary and grammar, and communication about practical topics like university life and family. Students can continue on to the department's LSA+ program in Rabat, Morocco during the summer term."},
+  {code:'MES 1.01', name:'Introduction to Middle Eastern Studies', dept:'Middle Eastern Studies', dist:['INT','SOC'], wcult:['NW'], desc:"Offers an introduction to the modern Middle East as a field of study, region, and site of cultural production, examining the rise of modernity, colonialism, nationalism, authoritarianism, fundamentalism, and questions of gender, sexuality, displacement, and diaspora."},
+  {code:'MES 8.01', name:'Introduction to Middle Eastern Politics', dept:'Middle Eastern Studies', dist:['INT','SOC'], wcult:['NW'], desc:"A gateway course to the political life of the Middle East, covering conflict and civil war, security arrangements, political economy, political ideologies, authoritarianism, terrorism, and regional rivalries."},
+  {code:'MES 9.02', name:'Introduction to Classical Arabic Literature', dept:'Middle Eastern Studies', dist:['INT','LIT'], wcult:['NW'], desc:"An introduction to Arabic literature and culture from the sixth to the fourteenth centuries through close reading of selected texts spanning a broad range of authors, genres, and periods. Taught in English; no knowledge of Arabic required."},
+  {code:'MES 12.18', name:'Difficult Conversation on the Middle East', dept:'Middle Eastern Studies', dist:['INT'], wcult:['NW'], desc:"Equips students with essential skills for engaging in meaningful dialogue across differences, exploring the most controversial topics in the Middle East today through case studies, guest speakers, and guided debates."},
+  {code:'MES 15.11', name:'The Middle East in Film: Picturing the Past and Present', dept:'Middle Eastern Studies', dist:['ART'], wcult:['NW'], desc:"Explores how films serve as a starting point for revisiting the past and rethinking the present, examining how documentaries, historical dramas, and other cinematic productions shape popular perceptions of the Middle East."},
+  {code:'MES 17.22', name:'The Qur\'an in Europe from the Middle Ages to the Twentieth Century', dept:'Middle Eastern Studies', dist:['INT','SOC'], wcult:['W'], desc:"Examines Christian Europeans' engagement with the Qur'an from the twelfth to the twentieth century, tracing its shift from a despised object of polemics to a masterpiece of world literature and its importance for Christian-Muslim relations."},
+
+  // Music
+  {code:'MUS 1', name:'Beginning Music Theory', dept:'Music', dist:['ART'], wcult:[], desc:"Intended for students with little or no knowledge of music theory, covering musical notation, intervals, scales, rhythm and meter, and general musical terminology, with opportunities to compose simple pieces and work on ear training."},
+  {code:'MUS 3.02', name:'American Music: Covers, Theft, and Musical Borrowing', dept:'Music', dist:['ART'], wcult:['W'], desc:null},
+  {code:'MUS 3.09', name:'Mestizaje: Music in Latin America', dept:'Music', dist:['ART'], wcult:['CI'], desc:"Introduces and explores the music of Latin America as the result of a complex process of merging and amalgamation of cultures, studying popular genres, autochthonous instruments, significant composers, and local cultures."},
+  {code:'MUS 7.07', name:'FYS: Animal Musics', dept:'Music', dist:[], wcult:[], desc:null},
+  {code:'MUS 17.07', name:'Entrepreneurship and the Arts', dept:'Music', dist:['ART'], wcult:[], desc:null},
+  {code:'MUS 18.02', name:'Hip-Hop in the United States', dept:'Music', dist:['ART'], wcult:['CI'], desc:"An introduction to hip-hop music and culture, offering interdisciplinary perspectives on one of the most popular genres in the US, examining rap and hip-hop as artistic and sociological phenomena with historical, cultural, economic, and political context."},
+  {code:'MUS 20.01', name:'Melody and Rhythm', dept:'Music', dist:['ART'], wcult:['W'], desc:"Explores the art of organizing musical thoughts in time, drawing from music of four continents and using class performance — singing, body percussion, playing instruments — to unlock the structures of effective melodies and rhythms."},
+  {code:'MUS 21.01', name:'Creative Music Theory', dept:'Music', dist:['ART'], wcult:[], desc:null},
+  {code:'MUS 25', name:'Sonic Arts 1: Machine Music', dept:'Music', dist:['ART'], wcult:[], desc:null},
+  {code:'MUS 30.02', name:'Film Scoring', dept:'Music', dist:['ART'], wcult:[], desc:null},
+  {code:'MUS 43', name:'From Beethoven to Now (Modern Classical Music)', dept:'Music', dist:['ART'], wcult:['W'], desc:null},
+  {code:'MUS 45.04', name:'Music and Social Justice', dept:'Music', dist:['ART'], wcult:['CI'], desc:null},
+  {code:'MUS 45.13', name:'Global Sounds', dept:'Music', dist:['ART'], wcult:['NW'], desc:"Explores world music, focusing each term on selected regions and cultures and how music has moved between East and West, past and present, and \"roots\" and popular styles, with critical listening, reading, and a final creative project."},
+  {code:'MUS 46', name:'Video Games and the Meaning of Life', dept:'Music', dist:['ART'], wcult:[], desc:null},
+  {code:'MUS 50', name:'Performance Laboratories', dept:'Music', dist:['ART'], wcult:[], desc:"Provides weekly coaching and instruction in diverse styles of music in a focused, small-group setting, centered on musical readings, discussion, and informal performance of selected repertory."},
+  {code:'MUS 53-58', name:'Studies in Musical Performance (Individual Instruction Program)', dept:'Music', dist:['ART'], wcult:[], desc:null},
+
+  // Native American and Indigenous Studies
+  {code:'NAIS 8', name:'Perspectives in Native American Studies', dept:'Native American and Indigenous Studies', dist:['SOC'], wcult:['NW'], desc:"Gives an overview of the relevant intellectual and cultural questions of tribal expression, identity, traditional thought, continuity, and sovereignty, examining discourses used to promote or inhibit the ongoing project of colonialism."},
+  {code:'NAIS 18', name:'Indigenous Environmental Studies', dept:'Native American and Indigenous Studies', dist:['TMV'], wcult:['NW'], desc:"Explores Indigenous peoples' relationships to land and natural resources and the threats rapid environmental change poses to indigenous societies, examining impacts from multiple indigenous and nonindigenous perspectives."},
+  {code:'NAIS 25', name:'Indian Country Today', dept:'Native American and Indigenous Studies', dist:['SOC'], wcult:['NW'], desc:null},
+  {code:'NAIS 30.28', name:'Peoples of Oceania', dept:'Native American and Indigenous Studies', dist:['SOC'], wcult:['NW'], desc:null},
+  {code:'NAIS 33', name:'Indigenous Futurisms', dept:'Native American and Indigenous Studies', dist:['SOC'], wcult:['NW'], desc:null},
+  {code:'NAIS 35', name:'Native American Literature', dept:'Native American and Indigenous Studies', dist:['LIT'], wcult:['NW'], desc:null},
+
+  // Philosophy
+  {code:'PHIL 1', name:'Intro to Philosophical Topics', dept:'Philosophy', dist:['TMV'], wcult:[], desc:"Engages with central topics, debates, and methods in philosophical inquiry, emphasizing the development of critical reading and analytical writing skills, drawing on both historical and contemporary sources."},
+  {code:'PHIL 1.04', name:'God, Darwin, and the Cosmos', dept:'Philosophy', dist:['TMV'], wcult:[], desc:null},
+  {code:'PHIL 1.10', name:'Minds, Meanings, and Images', dept:'Philosophy', dist:['TMV'], wcult:[], desc:null},
+  {code:'PHIL 1.14', name:'Knowledge, Truth, and Power', dept:'Philosophy', dist:['TMV'], wcult:[], desc:null},
+  {code:'PHIL 1.15', name:'Selves and Stories', dept:'Philosophy', dist:['TMV'], wcult:[], desc:null},
+  {code:'PHIL 1.16', name:'Morality, Freedom, and the Mind', dept:'Philosophy', dist:['TMV'], wcult:[], desc:"Focuses on classic philosophical questions about morality, freedom, and the mind — what makes actions right and wrong, whether free will is compatible with a deterministic universe, and whether the mind can be understood as identical with the brain."},
+  {code:'PHIL 3', name:'Reason and Argument', dept:'Philosophy', dist:['TMV'], wcult:[], desc:"An introduction to informal logic with special attention to the analysis of actual arguments as they arise in daily life, legal, scientific, and moral reasoning, along with methods for constructing logically correct and persuasive arguments."},
+  {code:'PHIL 6', name:'Logic and Language', dept:'Philosophy', dist:['QDS'], wcult:[], desc:"Introduces contemporary sentential logic and predicate logic, developing both the theory of logic and its application to ordinary language, covering symbolization, truth tables, truth trees, and derivations, with individualized discussion sessions."},
+  {code:'PHIL 8', name:'Introduction to Moral Philosophy', dept:'Philosophy', dist:['TMV'], wcult:[], desc:"An introduction to the foundations and nature of ethics, considering what makes for a good life, whether ethics is objective or relative, and the assumptions we make when offering ethical verdicts about particular cases."},
+  {code:'PHIL 9.06', name:'Friends, Lovers, & Comrades', dept:'Philosophy', dist:['TMV'], wcult:[], desc:null},
+
+  // Physics
+  {code:'PHYS 1', name:'General Physics I (Non-Major)', dept:'Physics and Astronomy', dist:[], wcult:[], desc:"Intended primarily for students who do not plan to major in a physical science. Has no prerequisites and may be taken independently of Physics 2 and 5."},
+  {code:'PHYS 2', name:'General Physics II (Non-Major)', dept:'Physics and Astronomy', dist:[], wcult:[], desc:"Intended primarily for students who do not plan to major in a physical science. Has no prerequisites and may be taken independently of Physics 1 and 5."},
+  {code:'PHYS 5', name:'General Physics (Non-Major)', dept:'Physics and Astronomy', dist:[], wcult:[], desc:"Intended primarily for students who do not plan to major in a physical science. Has no prerequisites and may be taken independently of Physics 1 and 2."},
+  {code:'PHYS 3', name:'General Physics I', dept:'Physics and Astronomy', dist:['SLA'], wcult:[], prereq:['MATH 3'], desc:"Covers the fundamental laws and phenomena of mechanics, heat, wave motion, and sound, including relativistic concepts. Elected primarily by 2nd/3rd year pre-health students; not accepted as a prerequisite for the engineering sciences major. Students with a 4 or 5 on the AP Physics C-Mechanics exam receive an exemption from this course."},
+  {code:'PHYS 4', name:'General Physics II', dept:'Physics and Astronomy', dist:['SLA'], wcult:[], prereq:['PHYS 3'], desc:"A less mathematically intensive treatment of electricity and magnetism than Physics 14, aimed at students interested in the life sciences or medical school. Does not serve as an engineering prerequisite. Students with a 4 or 5 on the AP Physics C-Electricity exam receive an exemption from this course."},
+  {code:'PHYS 13', name:'Introductory Physics I', dept:'Physics and Astronomy', dist:['SLA'], wcult:[], prereq:['MATH 3', 'MATH 8'], terms:['Fall','Winter'], desc:"Covers the fundamental laws of mechanics, reference frames, harmonic and gravitational motion, and thermodynamics and kinetic theory, part of a three-term sequence (13, 14, 19) designed for students majoring in a physical science. Offered in fall (13), winter (13 and 14), and spring (14); Physics 19 follows in the fall or spring of the following year."},
+  {code:'PHYS 14', name:'Introductory Physics II', dept:'Physics and Astronomy', dist:['SLA'], wcult:[], prereq:['PHYS 13', 'MATH 8'], terms:['Winter','Spring'], desc:"Continues Physics 13, covering electricity and magnetism using calculus. Part of the three-term sequence (13, 14, 19) for students majoring in a physical science; Math 8 is a prerequisite."},
+  {code:'PHYS 15', name:'Introductory Physics I, Accelerated Section', dept:'Physics and Astronomy', dist:['SLA'], wcult:[], prereq:['MATH 8'], terms:['Fall','Winter'], desc:"An alternative sequence to Physics 13/14/19 for students with a strong background in physics and math, covering classical dynamics, differential equations, special relativity, and an introduction to quantum mechanics, with a weekly lab. Students qualify for Physics 15 via an online placement exam available starting in early August; those who complete it may move into intermediate (40s-level) physics."},
+  {code:'PHYS 16', name:'Introductory Physics II, Accelerated Section', dept:'Physics and Astronomy', dist:['SLA'], wcult:[], prereq:['PHYS 15'], terms:['Winter','Spring'], desc:"Covers the second half of the accelerated Physics 15/16 track, an alternative to Physics 14 for students with a strong calculus and mechanics background. Physics 14 may be substituted for Physics 16."},
+  {code:'PHYS 19', name:'Introductory Physics III', dept:'Physics and Astronomy', dist:['SLA'], wcult:[], prereq:['PHYS 14', 'MATH 13'], terms:['Fall','Spring'], desc:"Completes the regular three-term physics sequence (13, 14, 19). Students who take Physics 13/14 in the fall-winter may take Physics 19 in the spring of their first year; those who complete 13/14 in the spring may take Physics 19 in the fall or spring of their second year."},
+
+  // Psychological and Brain Sciences
+  {code:'PSYC 1', name:'Introductory Psychology', dept:'Psychological and Brain Sciences', dist:['SOC'], wcult:[], desc:"Introduces the scientific study of the mind, brain, and behavior, emphasizing basic psychological processes of perception, consciousness, cognition, memory, and motivation as well as development, personality, and psychological disorders."},
+  {code:'PSYC 6', name:'Introduction to Neuroscience', dept:'Psychological and Brain Sciences', dist:['SCI'], wcult:[], desc:"Provides an introduction to the fundamental principles of neuroscience, including cellular and molecular neuroscience, neurophysiology, neuroanatomy, and cognitive neuroscience, beginning with single nerve cells and building to complex neural circuits."},
+
+  // Public Policy
+  {code:'PBPL 5', name:'Introduction to Public Policy', dept:'Public Policy', dist:['SOC'], wcult:['W'], desc:"The gateway course for the Public Policy minor. Incoming students are strongly encouraged to enroll in Winter term if they intend to apply for the Rockefeller Center's First-Year Fellows Program."},
+  {code:'PBPL 20', name:'Educational Issues in Contemporary Society', dept:'Public Policy', dist:['SOC'], wcult:['W'], desc:null},
+  {code:'PBPL 26', name:'Health Politics and Policy', dept:'Public Policy', dist:['SOC'], wcult:[], desc:null},
+  {code:'PBPL 27', name:'Who Gets In? College Admissions Post Affirmative Action', dept:'Public Policy', dist:['SOC'], wcult:['CI'], desc:null},
+  {code:'PBPL 28', name:'Law, Courts, and Judges', dept:'Public Policy', dist:['TMV'], wcult:['W'], desc:null},
+  {code:'PBPL 40.03', name:'Gender and Policy Leadership', dept:'Public Policy', dist:['SOC'], wcult:['W'], desc:null},
+  {code:'PBPL 41', name:'Writing and Speaking Public Policy', dept:'Public Policy', dist:['ART'], wcult:['W'], desc:null},
+  {code:'PBPL 42', name:'Ethics and Public Policy', dept:'Public Policy', dist:['TMV'], wcult:['W'], desc:null},
+  {code:'PBPL 44', name:'Election Polling', dept:'Public Policy', dist:['QDS'], wcult:['W'], desc:null},
+  {code:'PBPL 52.04', name:'Adolescent Risk Behavior and Policy: Corporate and Environmental Influences', dept:'Public Policy', dist:['SOC'], wcult:[], desc:null},
+
+  // Quantitative Social Science
+  {code:'QSS 15', name:'Introduction to Data Analysis', dept:'Quantitative Social Science', dist:['QDS'], wcult:[], prereq:['MATH 3'], desc:"Covers methods for transforming raw facts into useful information, including exploratory data analysis, scientific methods, and interpreting data through written and oral communication. Recommended for first- and second-year students."},
+  {code:'QSS 17', name:'Data Visualization', dept:'Quantitative Social Science', dist:['TLA'], wcult:[], desc:"Teaches R, a free software environment for statistical computing and graphics, to tell the stories hidden behind blizzards of data — students learn to \"wrangle\" and visualize data critical to their scientific endeavors."},
+  {code:'QSS 18', name:'Introduction to Game Theory', dept:'Quantitative Social Science', dist:['QDS'], wcult:[], desc:"Introduces game theory with a focus on political science applications, covering normal and extensive form games, Nash equilibria, imperfect information, and mixed strategies."},
+  {code:'QSS 20', name:'Modern Statistical Computing', dept:'Quantitative Social Science', dist:['TAS'], wcult:[], prereq:['COSC 1'], desc:"A foundational course providing essential computing skills for conducting social science research in the era of big data, covering data wrangling, visualization, SQL, text analysis, and supervised machine learning."},
+
+  // Religion
+  {code:'REL 1.01', name:'What Matters', dept:'Religion', dist:['TMV'], wcult:[], desc:"An introductory course to modern religious thought, examining the quest for meaning, value, and significance as captured in religious, ethical, and philosophical language in the Western tradition."},
+  {code:'REL 1.08', name:'The Religion of Things', dept:'Religion', dist:['TMV'], wcult:[], desc:null},
+  {code:'REL 1.09', name:'Religion and Drugs', dept:'Religion', dist:['TMV'], wcult:[], desc:null},
+  {code:'REL 1.11', name:'Sisters, Sages, Seekers: Women and Religion', dept:'Religion', dist:['TMV'], wcult:[], desc:null},
+  {code:'REL 1.12', name:'Race and Religion', dept:'Religion', dist:['INT','TMV'], wcult:[], desc:"Considers the role religious source texts and ideologies have played in the social construction of racial categories used to justify slavery, genocide, and colonial conquest, through comparative Jewish, Christian, Muslim, and Native American readings."},
+  {code:'REL 2.02', name:'Religions of Vietnam', dept:'Religion', dist:['TMV'], wcult:['NW'], desc:null},
+  {code:'REL 4', name:'Religions of Israel: The Hebrew Bible (Old Testament)', dept:'Religion', dist:['TMV'], wcult:['W'], desc:null},
+  {code:'REL 10.10', name:'Foundations of Chinese Thought', dept:'Religion', dist:['TMV'], wcult:['NW'], desc:null},
+  {code:'REL 11.01', name:'God and Money', dept:'Religion', dist:['TMV'], wcult:[], desc:null},
+  {code:'REL 13', name:'Sports, Ethics and Religion', dept:'Religion', dist:['TMV'], wcult:[], desc:null},
+  {code:'REL 14', name:'Introduction to African Religions', dept:'Religion', dist:['TMV'], wcult:['NW'], desc:null},
+  {code:'REL 17.01', name:'Introduction to African American Religion', dept:'Religion', dist:['TMV'], wcult:['CI'], desc:null},
+
+  // Sociology
+  {code:'SOCY 1', name:'Introductory Sociology', dept:'Sociology', dist:['SOC'], wcult:['W'], desc:"Provides a broad introduction to sociology, covering how societies develop and are stratified, how communities shape individual opportunity, key theories, and topics including race, class, gender, inequality, and collective action."},
+  {code:'SOCY 2', name:'Social Problems', dept:'Sociology', dist:['SOC'], wcult:[], desc:null},
+  {code:'SOCY 10', name:'Quantitative Analysis of Social Data', dept:'Sociology', dist:['QDS'], wcult:[], desc:null},
+  {code:'SOCY 11', name:'Research Methods', dept:'Sociology', dist:['QDS'], wcult:[], desc:null},
+  {code:'SOCY 15', name:'Sociological Classics', dept:'Sociology', dist:['SOC'], wcult:[], desc:null},
+  {code:'SOCY 16', name:'Constructing Social Theory', dept:'Sociology', dist:['SOC'], wcult:[], desc:null},
+  {code:'SOCY 23', name:'Social Movements', dept:'Sociology', dist:['SOC'], wcult:[], desc:null},
+  {code:'SOCY 33', name:'Self and Society', dept:'Sociology', dist:['SOC'], wcult:[], desc:null},
+  {code:'SOCY 34', name:'Health Disparities', dept:'Sociology', dist:['SOC'], wcult:[], desc:null},
+  {code:'SOCY 35', name:'Sociology of Mental Health', dept:'Sociology', dist:['SOC'], wcult:[], desc:null},
+  {code:'SOCY 38', name:'Status and Power in Social Interaction', dept:'Sociology', dist:['SOC'], wcult:[], desc:null},
+
+  // Spanish and Portuguese
+  {code:'SPAN 1', name:'Spanish I', dept:'Spanish and Portuguese', dist:[], wcult:[], desc:"Introduction to spoken and written Spanish, with intensive study of introductory grammar and vocabulary focused on culture and communication, including weekly practice in the virtual language lab."},
+  {code:'SPAN 2', name:'Spanish II', dept:'Spanish and Portuguese', dist:[], wcult:[], prereq:['SPAN 1'], desc:"Continuation of Spanish 1 with further intensive study of grammar and vocabulary focused on culture and communication."},
+  {code:'SPAN 3', name:'Spanish III', dept:'Spanish and Portuguese', dist:[], wcult:[], prereq:['SPAN 2'], desc:"Continuation of Spanish 2, providing additional intensive study of grammar and vocabulary with a focus on literature and culture."},
+  {code:'SPAN 9', name:'Culture and Conversation: Advanced Spanish Language', dept:'Spanish and Portuguese', dist:[], wcult:[], prereq:['SPAN 3'], desc:"Serves as a bridge between Spanish 3 and Spanish 20 through intensive study of documentaries, TV programs, podcasts, and films, practicing listening, speaking, and writing toward an Intermediate High Level on the ACTFL scale."},
+  {code:'SPAN 15', name:'Latinx Writing and Composition', dept:'Spanish and Portuguese', dist:[], wcult:[], desc:"Draws on the strengths of Latinx language learners to enhance writing and composition skills, exploring the cultural experiences of US Latinx communities and the Spanish-speaking world through an experiential learning component."},
+  {code:'SPAN 20', name:'Writing and Reading: A Critical and Cultural Approach', dept:'Spanish and Portuguese', dist:['LIT'], wcult:[], prereq:['SPAN 9'], desc:"The first course of the Spanish major/minor, transitioning from language courses to upper-division work through critical and theoretical vocabulary and the reading of short stories, poems, films, and journalistic articles."},
+  {code:'PORT 11', name:'Intensive Portuguese', dept:'Spanish and Portuguese', dist:[], wcult:[], desc:"A 1-credit course combining Portuguese 1 and 2 in one term, introducing the Portuguese language and the cultural and social aspects of Brazil and other Portuguese-speaking countries."},
+  {code:'PORT 3', name:'Portuguese III', dept:'Spanish and Portuguese', dist:[], wcult:[], desc:"Provides additional, intensive study of grammar and vocabulary with a focus on literature and culture, using films, music, and other media."},
+
+  // Studio Art
+  {code:'SART 15', name:'Drawing I', dept:'Studio Art', dist:['ART'], wcult:[], desc:"An introductory course exploring the issues of mark, line, scale, space, light, and composition, developing students' critical ability alongside skills in charcoal, ink, and pencil, drawn from both observed form and non-observational work."},
+  {code:'SART 16', name:'Sculpture I', dept:'Studio Art', dist:['ART'], wcult:[], desc:"Emphasizes making and critiquing sculpture, discussing three-dimensional design concepts and elements of sculpture such as form, space, surface, and time, with an individual approach to creative problem solving."},
+  {code:'SART 17.08', name:'Special Topics: Digital Drawing', dept:'Studio Art', dist:['ART'], wcult:[], desc:"Explores the connection of hand drawing and digital drawing to create original images, combining computer-generated drawings with hand drawings using Photoshop, Illustrator, and Rhino software."},
+  {code:'SART Architecture I', name:'Architecture I', dept:'Studio Art', dist:['ART'], wcult:[], desc:null},
+  {code:'SART 27', name:'Printmaking I', dept:'Studio Art', dist:['ART'], wcult:[], desc:"An introduction to print media — stencil printing, relief, and artist books — considering printmaking in a contemporary context through technique and discussion while discovering new methods of practice."},
+  {code:'SART 29', name:'Photography I', dept:'Studio Art', dist:['ART'], wcult:[], desc:"An introductory course on the conceptual and technical fundamentals of analog photographic technologies, concentrating on both image-making and the fine print through assignments, guests, and critiques."},
+  {code:'SART Figure Sculpture', name:'Figure Sculpture', dept:'Studio Art', dist:['ART'], wcult:[], desc:null},
+  {code:'SART Figure Drawing', name:'Figure Drawing', dept:'Studio Art', dist:['ART'], wcult:[], desc:null},
+
+  // Theater
+  {code:'THEA 1', name:'Introduction to Theater', dept:'Theater', dist:['ART'], wcult:[], desc:"Introduces and explores theater from page to stage as a live performing art, examining the relationship between theater and society, dramatic structure, theatrical representation, and the crafts of directors, designers, playwrights, and actors."},
+  {code:'THEA 15', name:'Theater and Society I: Classical and Medieval Performance', dept:'Theater', dist:['ART','INT'], wcult:['W'], desc:"Explores selected examples of world performance during the classical and medieval periods in Western Europe and Eastern Asia — Aeschylus, Sophocles, Euripides, Aristophanes, Seneca, and Zeami — situating them within their sociopolitical and artistic contexts."},
+  {code:'THEA 16', name:'Theater and Society II: Early Modern Performance', dept:'Theater', dist:['ART'], wcult:['W'], desc:null},
+  {code:'THEA 17', name:'Theater and Society III: 19th and 20th Century Performance', dept:'Theater', dist:['ART'], wcult:['W'], desc:null},
+  {code:'THEA 26', name:'Movement Fundamentals I', dept:'Theater', dist:['ART'], wcult:[], desc:"An introduction to movement for the stage, animating the interplay between anatomy, movement theories, and performance through physical techniques, improvisation, and movement composition."},
+  {code:'THEA 28', name:'Dance Composition', dept:'Theater', dist:['ART'], wcult:[], desc:null},
+  {code:'THEA 29', name:'Dance Theater Performance', dept:'Theater', dist:['ART'], wcult:[], desc:null},
+  {code:'THEA 30', name:'Acting I', dept:'Theater', dist:['ART'], wcult:[], desc:"Open to all students with no theater experience necessary — through individual and group exercises, students build an ensemble based on respect and empathy, learning to play a character believably, culminating in scene presentations."},
+  {code:'THEA 40', name:'Technical Production', dept:'Theater', dist:['ART'], wcult:[], desc:"An introduction to the technical aspects of live theater, exploring the stage and its equipment, materials and construction of scenic and property items, lighting, sound, rigging, design, and stage management."},
+  {code:'THEA 41', name:'Stage Management', dept:'Theater', dist:['ART'], wcult:[], desc:"An introductory course in the theories, techniques, and practices of stage managing a production from its initial stages to the conclusion of the run, gaining practical experience on Department of Theater productions."},
+  {code:'THEA 42', name:'Scene Design', dept:'Theater', dist:['ART'], wcult:[], desc:"An introduction to the basics of scenic design through weekly projects in scale models, drawings, research, lighting, and storyboards, studying the collaborative process among scene, costume, and lighting designers."},
+  {code:'THEA 44', name:'Lighting Design', dept:'Theater', dist:['ART'], wcult:[], desc:null},
+  {code:'THEA 48', name:'Costume Design', dept:'Theater', dist:['ART'], wcult:[], desc:null},
+  {code:'THEA 50', name:'Playwriting I', dept:'Theater', dist:['ART'], wcult:[], desc:null},
+
+  // Women's, Gender, and Sexuality Studies
+  {code:'WGSS 1', name:"Introduction to Women's, Gender, and Sexuality Studies", dept:"Women's, Gender, and Sexuality Studies", dist:['SOC'], wcult:['CI'], desc:"Investigates the categories sex, gender, sexuality, race, class, citizenship, and ability, and how they are socially and historically constructed in relation to one another."},
+  {code:'WGSS 2', name:'Introduction to Queer and Trans Studies', dept:"Women's, Gender, and Sexuality Studies", dist:['SOC'], wcult:['CI'], desc:"Examines the ways in which \"deviant\" sexual and gender behavior and identities, and the political movements that emerge from them, have been conceptualized in U.S. culture."},
+  {code:'WGSS 13', name:'Transnational Feminisms', dept:"Women's, Gender, and Sexuality Studies", dist:['INT','SOC'], wcult:['NW'], desc:"Covers genealogies of global, women of color, and postcolonial or Third World feminisms, and histories of movement-building around globalization, development, war, labor, migration, and climate change."},
+  {code:'WGSS 14', name:'Radical Sexuality: Of Color, Wildness, and Fabulosity', dept:"Women's, Gender, and Sexuality Studies", dist:['INT','ART'], wcult:['NW'], desc:"Examines how issues of race and sexuality are elemental to radical formulations of queer theory."},
+  {code:'WGSS 17', name:'The Politics of Fashion', dept:"Women's, Gender, and Sexuality Studies", dist:['SOC'], wcult:['CI'], desc:"Explores how clothes are a medium for fashioning identities from commodities, and how political and social tensions are embodied in their fabrications."},
+
+  // Writing and Speech
+  {code:'WRIT 2-3', name:'Composition and Research', dept:'Writing and Speech Program', dist:[], wcult:[], desc:"A two-term first-year composition course built on serious intellectual engagement, with intensive seminar-style classes analyzing literary and other works. In WRIT 3, students engage in the more sustained discourse of the research paper. Taken in place of WRIT 5; both terms must be completed."},
+  {code:'WRIT 5', name:'Expository Writing', dept:'Writing and Speech Program', dist:[], wcult:[], desc:"A one-term critical writing course, founded on the principle that thinking, reading, and writing are interdependent activities. Instruction focuses on strategies for reading, interpretation, and argumentation at all stages of the writing process."},
+  {code:'SPEE 20', name:'Public Speaking', dept:'Writing and Speech Program', dist:['ART'], wcult:[], desc:"Covers the theory and practice of public speaking, guiding students through topic selection, organization, language, and delivery, with formal speeches, extemporaneous speeches, and speech analyses."},
+];
+
+let dbFilters = { q:'', dept:'', req:'' };
+
+
+let state = { courses: [], manual: {writing:false, seminar:false, language:false} };
+let selectedDist = new Set();
+
+function populateManualDeptSelect(){
+  const sel = document.getElementById('f-dept');
+  const depts = Array.from(new Set(COURSES.map(c => c.dept))).sort();
+  depts.forEach(d=>{
+    const o = document.createElement('option');
+    o.value = d; o.textContent = d;
+    sel.appendChild(o);
+  });
+}
+populateManualDeptSelect();
+let selectedWcult = new Set();
+
+const STORAGE_KEY = 'course-catalogue-data';
+
+function hasArtifactStorage(){
+  return typeof window.storage !== 'undefined' && window.storage && typeof window.storage.get === 'function';
+}
+
+async function load(){
+  let loaded = null;
+
+  // Try Claude's artifact storage first (only available when viewed inside claude.ai)
+  if(hasArtifactStorage()){
+    try{
+      const res = await window.storage.get(STORAGE_KEY, false);
+      if(res && res.value) loaded = JSON.parse(res.value);
+    }catch(e){ /* no saved data yet in artifact storage */ }
+  }
+
+  // Fall back to localStorage — this is what actually persists when the file
+  // is downloaded, opened directly, or embedded elsewhere like Notion.
+  if(!loaded){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw) loaded = JSON.parse(raw);
+    }catch(e){ /* localStorage unavailable or empty */ }
+  }
+
+  if(loaded) state = loaded;
+  render();
+}
+
+async function save(){
+  const json = JSON.stringify(state);
+  if(hasArtifactStorage()){
+    try{ await window.storage.set(STORAGE_KEY, json, false); }
+    catch(e){ console.error('Artifact storage error', e); }
+  }
+  try{ localStorage.setItem(STORAGE_KEY, json); }
+  catch(e){ console.error('localStorage error', e); }
+}
+
+function buildTagButtons(container, list, selectedSet){
+  container.innerHTML = '';
+  list.forEach(item=>{
+    const b = document.createElement('span');
+    b.className = 'tag-btn';
+    b.textContent = item.key;
+    b.title = item.label;
+    b.onclick = ()=>{
+      if(selectedSet.has(item.key)) selectedSet.delete(item.key); else selectedSet.add(item.key);
+      b.classList.toggle('selected');
+    };
+    container.appendChild(b);
+  });
+}
+buildTagButtons(document.getElementById('dist-tags'), DIST, selectedDist);
+buildTagButtons(document.getElementById('wcult-tags'), WCULT, selectedWcult);
+
+// --- Course database search ---
+const ALL_REQS = [...DIST.map(d=>d.key), ...WCULT.map(w=>w.key)];
+
+function populateDbFilters(){
+  const deptSel = document.getElementById('db-dept-filter');
+  const reqSel = document.getElementById('db-req-filter');
+  const depts = Array.from(new Set(COURSES.map(c=>c.dept))).sort();
+  depts.forEach(d=>{
+    const o = document.createElement('option');
+    o.value = d; o.textContent = d;
+    deptSel.appendChild(o);
+  });
+  ALL_REQS.forEach(r=>{
+    const o = document.createElement('option');
+    o.value = r; o.textContent = r;
+    reqSel.appendChild(o);
+  });
+}
+populateDbFilters();
+
+function normCode(s){
+  return (s||'').trim().toLowerCase().replace(/\s+/g,' ');
+}
+function hasCourseCode(code){
+  const target = normCode(code);
+  return state.courses.some(c => normCode(c.code) === target || normCode(c.code).includes(target) || target.includes(normCode(c.code)));
+}
+function missingPrereqs(prereqList){
+  return (prereqList||[]).filter(p => !hasCourseCode(p));
+}
+
+function findCourseByCode(code){
+  const target = normCode(code);
+  return COURSES.find(c => normCode(c.code) === target);
+}
+
+function addMissingPrereqs(course){
+  const missing = missingPrereqs(course.prereq);
+  missing.forEach(code=>{
+    const found = findCourseByCode(code);
+    if(found){
+      state.courses.push({
+        id: Date.now()+Math.random(),
+        code: found.code, name: found.name, dept: found.dept, term: '',
+        dist: [...found.dist], wcult: [...found.wcult], prereq: [...(found.prereq||[])],
+        priority: false, desc: found.desc || null, notes: ''
+      });
+    } else {
+      state.courses.push({
+        id: Date.now()+Math.random(),
+        code: code, name: '', dept: '', term: '',
+        dist: [], wcult: [], prereq: [], priority: false, desc: null, notes: ''
+      });
+    }
+  });
+  save(); render();
+}
+
+function matchesFilters(c){
+  if(dbFilters.dept && c.dept !== dbFilters.dept) return false;
+  if(dbFilters.req && !(c.dist.includes(dbFilters.req) || c.wcult.includes(dbFilters.req))) return false;
+  const q = dbFilters.q.trim().toLowerCase();
+  if(!q) return true;
+  return searchScore(c, q) > 0;
+}
+
+function searchScore(c, q){
+  const dept = c.dept.toLowerCase();
+  const code = c.code.toLowerCase();
+  const name = c.name.toLowerCase();
+  const desc = (c.desc||'').toLowerCase();
+  let score = 0;
+  if(dept.startsWith(q)) score += 200;
+  else if(dept.includes(q)) score += 120;
+  if(code.includes(q)) score += 40;
+  if(name.includes(q)) score += 30;
+  if(desc.includes(q)) score += 5;
+  return score;
+}
+
+function renderCourseSearch(){
+  const results = document.getElementById('db-results');
+  results.innerHTML = '';
+  const q = dbFilters.q.trim().toLowerCase();
+  let matches = COURSES.filter(matchesFilters);
+  if(q){
+    matches = matches
+      .map(c => ({c, score: searchScore(c, q)}))
+      .sort((a,b) => b.score - a.score)
+      .map(x => x.c);
+  }
+  matches = matches.slice(0, 200);
+
+  if(matches.length === 0){
+    const e = document.createElement('div');
+    e.className = 'db-empty';
+    e.textContent = 'No courses match — try a different keyword, department, or requirement.';
+    results.appendChild(e);
+    return;
+  }
+
+  matches.forEach(c=>{
+    const row = document.createElement('div');
+    row.className = 'db-row';
+
+    const main = document.createElement('div');
+    main.className = 'db-row-main';
+    let prereqHtml = '';
+    if(c.prereq && c.prereq.length){
+      const missing = missingPrereqs(c.prereq);
+      const cls = missing.length ? 'prereq-warn' : 'prereq-ok';
+      const label = missing.length
+        ? `⚠ Requires: ${c.prereq.join(', ')} (not yet in your catalogue)`
+        : `✓ Requires: ${c.prereq.join(', ')} — already filed`;
+      prereqHtml = `<div class="db-row-prereq ${cls}">${escapeHtml(label)}</div>`;
+    }
+    main.innerHTML = `
+      <div class="db-row-code">${escapeHtml(c.code)}</div>
+      <div class="db-row-name">${escapeHtml(c.name)}</div>
+      <div class="db-row-meta">${escapeHtml(c.dept)}</div>
+      <div class="db-row-tags">${c.dist.map(d=>`<span class="tag-pill">${d}</span>`).join('')}${c.wcult.map(w=>`<span class="tag-pill wcult-pill">${w}</span>`).join('')}</div>
+      ${prereqHtml}
+    `;
+
+    const actions = document.createElement('div');
+    actions.className = 'db-row-actions';
+    if(c.desc){
+      const infoBtn = document.createElement('button');
+      infoBtn.className = 'db-info-btn';
+      infoBtn.type = 'button';
+      infoBtn.textContent = 'i';
+      infoBtn.title = 'Course description';
+      infoBtn.onclick = ()=> openInfo(`${c.code} — ${c.name}`, escapeHtml(c.desc));
+      actions.appendChild(infoBtn);
+    }
+    const addBtn = document.createElement('button');
+    addBtn.className = 'db-add-btn';
+    addBtn.type = 'button';
+    addBtn.textContent = '+ Add';
+    addBtn.onclick = ()=>{
+      state.courses.push({
+        id: Date.now()+Math.random(),
+        code: c.code, name: c.name, dept: c.dept, term: '',
+        dist: [...c.dist], wcult: [...c.wcult], prereq: [...(c.prereq||[])], priority: false, desc: c.desc || null, notes: ''
+      });
+      save(); render();
+      addBtn.textContent = 'Added ✓';
+      addBtn.classList.add('added');
+      setTimeout(()=>{ addBtn.textContent = '+ Add'; addBtn.classList.remove('added'); }, 1200);
+    };
+    actions.appendChild(addBtn);
+
+    row.appendChild(main);
+    row.appendChild(actions);
+    results.appendChild(row);
+  });
+}
+
+document.getElementById('db-search').addEventListener('input', (e)=>{ dbFilters.q = e.target.value; renderCourseSearch(); });
+document.getElementById('db-dept-filter').addEventListener('change', (e)=>{ dbFilters.dept = e.target.value; renderCourseSearch(); });
+document.getElementById('db-req-filter').addEventListener('change', (e)=>{ dbFilters.req = e.target.value; renderCourseSearch(); });
+
+document.getElementById('manual-toggle').onclick = ()=>{
+  const wrap = document.getElementById('manual-form-wrap');
+  const isOpen = wrap.classList.toggle('open');
+  document.getElementById('manual-toggle').textContent = isOpen ? '– Hide manual entry' : '+ Add a course not listed here';
+};
+
+function countTag(key){
+  return state.courses.filter(c => c.dist.includes(key) || c.wcult.includes(key)).length;
+}
+
+function renderReqChips(){
+  const distC = document.getElementById('dist-chips');
+  const wcultC = document.getElementById('wcult-chips');
+  const manC = document.getElementById('manual-chips');
+  distC.innerHTML=''; wcultC.innerHTML=''; manC.innerHTML='';
+
+  let done=0, total = DIST.length + WCULT.length + MANUAL.length;
+
+  DIST.forEach(r=>{
+    const n = state.courses.filter(c=>c.dist.includes(r.key)).length;
+    const isDone = n >= r.needed;
+    if(isDone) done++;
+    distC.appendChild(chip(r.label, isDone, `${Math.min(n,r.needed)}/${r.needed}`, DIST_INFO));
+  });
+  WCULT.forEach(r=>{
+    const n = state.courses.filter(c=>c.wcult.includes(r.key)).length;
+    const isDone = n >= r.needed;
+    if(isDone) done++;
+    wcultC.appendChild(chip(r.label, isDone, `${Math.min(n,r.needed)}/${r.needed}`, WCULT_INFO));
+  });
+  MANUAL.forEach(r=>{
+    const isDone = !!state.manual[r.key];
+    if(isDone) done++;
+    const c = chip(r.label, isDone, '', MANUAL_INFO[r.key]);
+    c.classList.add('manual');
+    const dot = c.querySelector('.dot');
+    const txt = c.querySelector('.label-text');
+    [dot, txt].forEach(el=>{ el.onclick = ()=>{ state.manual[r.key] = !state.manual[r.key]; save(); renderReqChips(); }; });
+    manC.appendChild(c);
+  });
+
+  document.getElementById('progress-count').textContent = `${done} / ${total} complete`;
+  document.getElementById('progress-fill').style.width = (done/total*100)+'%';
+}
+
+function chip(label, done, countText, info){
+  const c = document.createElement('div');
+  c.className = 'chip' + (done ? ' done' : '');
+  const dot = document.createElement('span');
+  dot.className = 'dot';
+  dot.textContent = done ? '✓' : '';
+  const txt = document.createElement('span');
+  txt.className = 'label-text';
+  txt.textContent = label;
+  c.appendChild(dot); c.appendChild(txt);
+  if(countText){
+    const ct = document.createElement('span');
+    ct.className = 'count';
+    ct.textContent = countText;
+    c.appendChild(ct);
+  }
+  if(info){
+    const infoBtn = document.createElement('button');
+    infoBtn.className = 'info-btn';
+    infoBtn.type = 'button';
+    infoBtn.textContent = 'i';
+    infoBtn.title = 'What is this requirement?';
+    infoBtn.onclick = (e)=>{ e.stopPropagation(); openInfo(info.title, info.body); };
+    c.appendChild(infoBtn);
+  }
+  return c;
+}
+
+function openInfo(title, bodyHtml){
+  document.getElementById('info-title').textContent = title;
+  document.getElementById('info-body').innerHTML = bodyHtml;
+  document.getElementById('info-overlay').classList.add('open');
+}
+function closeInfo(){
+  document.getElementById('info-overlay').classList.remove('open');
+}
+document.getElementById('close-info').onclick = closeInfo;
+document.getElementById('info-overlay').onclick = (e)=>{ if(e.target.id === 'info-overlay') closeInfo(); };
+
+let notesModalCourseId = null;
+
+function openNotesModal(course){
+  notesModalCourseId = course.id;
+  document.getElementById('notes-title').textContent = `${course.code}${course.name ? ' — ' + course.name : ''}`;
+  document.getElementById('notes-textarea').value = course.notes || '';
+  document.getElementById('notes-overlay').classList.add('open');
+  document.getElementById('notes-textarea').focus();
+}
+function closeNotesModal(){
+  document.getElementById('notes-overlay').classList.remove('open');
+  notesModalCourseId = null;
+}
+function saveNotesModal(){
+  const course = state.courses.find(c => c.id === notesModalCourseId);
+  if(course){
+    course.notes = document.getElementById('notes-textarea').value;
+    save(); render();
+  }
+  closeNotesModal();
+}
+document.getElementById('close-notes').onclick = closeNotesModal;
+document.getElementById('notes-cancel-btn').onclick = closeNotesModal;
+document.getElementById('notes-save-btn').onclick = saveNotesModal;
+document.getElementById('notes-overlay').onclick = (e)=>{ if(e.target.id === 'notes-overlay') closeNotesModal(); };
+
+function openAddCourse(){
+  document.getElementById('add-course-overlay').classList.add('open');
+  renderCourseSearch();
+  document.getElementById('db-search').focus();
+}
+function closeAddCourse(){
+  document.getElementById('add-course-overlay').classList.remove('open');
+}
+document.getElementById('open-add-course').onclick = openAddCourse;
+document.getElementById('close-add-course').onclick = closeAddCourse;
+document.getElementById('add-course-overlay').onclick = (e)=>{ if(e.target.id === 'add-course-overlay') closeAddCourse(); };
+
+let draggedCourseId = null;
+const TERM_ISLANDS = ['Fall','Winter','Spring','Summer'];
+const TERM_CHOICES = ['','Fall','Winter','Spring','Summer','Undecided'];
+
+function buildCourseRow(c){
+  const tr = document.createElement('tr');
+  const dc = deptColor(c.dept);
+  tr.style.borderLeftColor = dc.border;
+  tr.draggable = true;
+  tr.dataset.courseId = String(c.id);
+  const missing = missingPrereqs(c.prereq);
+  const flagHtml = missing.length
+    ? `<span class="prereq-flag" title="Requires: ${escapeHtml(missing.join(', '))} — not yet in your catalogue">!</span>`
+    : '';
+  const infoHtml = c.desc
+    ? `<button class="db-info-btn row-info-btn" type="button" title="Course description">i</button>`
+    : '';
+  const prereqAddHtml = missing.length
+    ? `<button class="prereq-add-btn" type="button" title="Add ${escapeHtml(missing.join(', '))} to your catalogue">+ Add prereq${missing.length>1?'s':''}</button>`
+    : '';
+  // If a course has a known `terms` restriction (per the guide's stated offering pattern),
+  // only show those terms plus the always-available "—" and "Undecided" options.
+  const allowedChoices = TERM_CHOICES.filter(t => t === '' || t === 'Undecided' || !c.terms || c.terms.includes(t));
+  const termOptionsHtml = allowedChoices.map(t=>
+    `<option value="${t}"${(c.term||'')===t?' selected':''}>${t || '—'}</option>`
+  ).join('');
+  const termNote = c.terms ? ` title="Offered: ${c.terms.join(', ')}"` : '';
+  const hasNote = !!(c.notes && c.notes.trim());
+  const notesBtnLabel = hasNote ? '📝 Note' : '📝 Add note';
+  tr.innerHTML = `
+    <td class="drag-handle-cell" title="Drag to reorder — drop into a different term's group to move it there">⠿</td>
+    <td><button class="star-btn${c.priority ? ' active' : ''}" title="Toggle priority">${c.priority ? '★' : '☆'}</button></td>
+    <td class="code-cell">${escapeHtml(c.code)}${infoHtml}${flagHtml}${prereqAddHtml}</td>
+    <td>${escapeHtml(c.name)}</td>
+    <td><span class="dept-pill" style="background:${dc.bg};color:${dc.text};">${escapeHtml(c.dept || 'Undeclared')}</span></td>
+    <td><select class="term-select"${termNote || ' title="Choose a term"'}>${termOptionsHtml}</select></td>
+    <td>${c.dist.map(d=>`<span class="tag-pill">${d}</span>`).join('')}</td>
+    <td>${c.wcult.map(w=>`<span class="tag-pill wcult-pill">${w}</span>`).join('')}</td>
+    <td><button class="notes-btn${hasNote ? ' has-note' : ''}" type="button" title="${hasNote ? 'View or edit your note' : 'Add a note'}">${notesBtnLabel}</button></td>
+    <td><button class="del-btn" title="Remove">✕</button></td>
+  `;
+  tr.querySelector('.del-btn').onclick = ()=>{
+    state.courses = state.courses.filter(x=>x.id !== c.id);
+    save(); render();
+  };
+  tr.querySelector('.notes-btn').onclick = ()=> openNotesModal(c);
+  tr.querySelector('.star-btn').onclick = ()=>{
+    c.priority = !c.priority;
+    save(); render();
+  };
+  tr.querySelector('.term-select').onchange = (e)=>{
+    c.term = e.target.value;
+    save(); render();
+  };
+  const infoBtn = tr.querySelector('.row-info-btn');
+  if(infoBtn){
+    infoBtn.onclick = ()=> openInfo(`${c.code} — ${c.name}`, escapeHtml(c.desc));
+  }
+  const prereqAddBtn = tr.querySelector('.prereq-add-btn');
+  if(prereqAddBtn){
+    prereqAddBtn.onclick = ()=> addMissingPrereqs(c);
+  }
+
+  tr.addEventListener('dragstart', ()=>{
+    draggedCourseId = String(c.id);
+    tr.classList.add('dragging');
+  });
+  tr.addEventListener('dragend', ()=>{
+    tr.classList.remove('dragging');
+    document.querySelectorAll('#course-groups tr.drag-over').forEach(el=>el.classList.remove('drag-over'));
+  });
+  tr.addEventListener('dragover', (e)=>{ e.preventDefault(); e.stopPropagation(); tr.classList.add('drag-over'); });
+  tr.addEventListener('dragleave', ()=> tr.classList.remove('drag-over'));
+  tr.addEventListener('drop', (e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    tr.classList.remove('drag-over');
+    if(draggedCourseId === null) return;
+    reorderCourses(draggedCourseId, String(c.id), c.term);
+    draggedCourseId = null;
+  });
+
+  return tr;
+}
+
+function reorderCourses(draggedId, targetId, targetTerm){
+  if(draggedId === targetId) return;
+  const list = state.courses;
+  const fromIdx = list.findIndex(c => String(c.id) === draggedId);
+  if(fromIdx === -1) return;
+  const [moved] = list.splice(fromIdx, 1);
+  if(targetTerm !== undefined) moved.term = targetTerm;
+  let toIdx = targetId ? list.findIndex(c => String(c.id) === targetId) : -1;
+  if(toIdx === -1) toIdx = list.length;
+  list.splice(toIdx, 0, moved);
+  save(); render();
+}
+
+// stable sort within a group: starred (priority) courses float to top, manual order preserved
+function sortGroup(list){
+  return list
+    .map((c, i)=>({c, i}))
+    .sort((a,b)=> (b.c.priority?1:0) - (a.c.priority?1:0) || a.i - b.i)
+    .map(x=>x.c);
+}
+
+function buildGroupTable(list, containerTerm){
+  const table = document.createElement('table');
+  table.innerHTML = `
+    <thead>
+      <tr><th></th><th></th><th>Code</th><th>Course</th><th>Dept</th><th>Term</th><th>Distributive</th><th>W. Culture</th><th>Notes</th><th></th></tr>
+    </thead>
+    <tbody></tbody>
+  `;
+  const tbody = table.querySelector('tbody');
+  sortGroup(list).forEach(c => tbody.appendChild(buildCourseRow(c)));
+
+  // dropping on empty space within this group (not on a specific row) appends to the end of this term
+  table.addEventListener('dragover', (e)=> e.preventDefault());
+  table.addEventListener('drop', (e)=>{
+    e.preventDefault();
+    if(draggedCourseId === null) return;
+    reorderCourses(draggedCourseId, null, containerTerm);
+    draggedCourseId = null;
+  });
+
+  return table;
+}
+
+function renderTable(){
+  document.getElementById('drawer-count').textContent = `${state.courses.length} course${state.courses.length===1?'':'s'} filed`;
+  const empty = document.getElementById('empty-state');
+  const groups = document.getElementById('course-groups');
+  groups.innerHTML = '';
+
+  if(state.courses.length === 0){
+    empty.style.display='block';
+    return;
+  }
+  empty.style.display='none';
+
+  const byTerm = {};
+  TERM_ISLANDS.forEach(t => byTerm[t] = []);
+  const rest = [];
+  state.courses.forEach(c=>{
+    if(TERM_ISLANDS.includes(c.term)) byTerm[c.term].push(c);
+    else rest.push(c);
+  });
+
+  const anyIslands = TERM_ISLANDS.some(t => byTerm[t].length);
+
+  TERM_ISLANDS.forEach(term=>{
+    const list = byTerm[term];
+    if(!list.length) return;
+    const island = document.createElement('div');
+    island.className = 'term-island';
+    const header = document.createElement('div');
+    header.className = 'term-island-header';
+    header.innerHTML = `<span class="term-island-title">${term} Term</span><span class="term-island-count">${list.length} course${list.length===1?'':'s'}</span>`;
+    island.appendChild(header);
+    island.appendChild(buildGroupTable(list, term));
+    groups.appendChild(island);
+  });
+
+  if(rest.length){
+    const wrap = document.createElement('div');
+    if(anyIslands){
+      const label = document.createElement('div');
+      label.className = 'term-rest-label';
+      label.textContent = 'No term chosen yet';
+      wrap.appendChild(label);
+    }
+    wrap.appendChild(buildGroupTable(rest, ''));
+    groups.appendChild(wrap);
+  }
+}
+
+function isDarkMode(){
+  return document.documentElement.classList.contains('dark-mode');
+}
+
+function deptColor(name){
+  const key = (name || 'Undeclared').trim().toLowerCase();
+  let hash = 0;
+  for(let i=0;i<key.length;i++){ hash = (hash*31 + key.charCodeAt(i)) % 360; }
+  const hue = hash;
+  if(isDarkMode()){
+    return {
+      bg: `hsl(${hue}, 32%, 22%)`,
+      border: `hsl(${hue}, 40%, 45%)`,
+      text: `hsl(${hue}, 55%, 85%)`
+    };
+  }
+  return {
+    bg: `hsl(${hue}, 62%, 90%)`,
+    border: `hsl(${hue}, 45%, 55%)`,
+    text: `hsl(${hue}, 55%, 26%)`
+  };
+}
+
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+function render(){
+  renderReqChips();
+  renderTable();
+}
+
+document.getElementById('add-btn').onclick = ()=>{
+  const code = document.getElementById('f-code').value.trim();
+  const name = document.getElementById('f-name').value.trim();
+  if(!code && !name){ document.getElementById('f-code').focus(); return; }
+
+  state.courses.push({
+    id: Date.now()+Math.random(),
+    code, name,
+    dept: document.getElementById('f-dept').value.trim(),
+    term: '',
+    dist: Array.from(selectedDist),
+    wcult: Array.from(selectedWcult),
+    prereq: [],
+    priority: false,
+    desc: null,
+    notes: ''
+  });
+
+  document.getElementById('f-code').value='';
+  document.getElementById('f-name').value='';
+  document.getElementById('f-dept').value='';
+  selectedDist.clear(); selectedWcult.clear();
+  document.querySelectorAll('#dist-tags .tag-btn, #wcult-tags .tag-btn').forEach(b=>b.classList.remove('selected'));
+
+  save(); render();
+  closeAddCourse();
+};
+
+function updateThemeToggleLabel(){
+  const btn = document.getElementById('theme-toggle-btn');
+  btn.textContent = isDarkMode() ? '☀️ Light' : '🌙 Dark';
+}
+document.getElementById('theme-toggle-btn').onclick = ()=>{
+  const nowDark = document.documentElement.classList.toggle('dark-mode');
+  try{ localStorage.setItem('course-catalogue-theme', nowDark ? 'dark' : 'light'); }
+  catch(e){}
+  updateThemeToggleLabel();
+  render(); // re-render so dept-pill colors recompute for the new theme
+};
+updateThemeToggleLabel();
+
+load();
+</script>
+</body>
+</html>
